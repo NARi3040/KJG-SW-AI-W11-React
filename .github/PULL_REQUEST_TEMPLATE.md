@@ -15,7 +15,7 @@ closes #
 ## 공통 형식 영향
 - [ ] VNode 구조 변경 없음
 - [ ] Patch 형식 변경 없음
-<!-- 변경했다면 docs/design/vnode-spec.md도 같이 수정하고 이유를 적을 것 -->
+<!-- 변경했다면 docs/design/vnode-spec.md도 같이 수정하고 이유를 적어 주세요 -->
 
 ## 테스트
 - [ ] 단위 테스트 추가/수정 (대상: )

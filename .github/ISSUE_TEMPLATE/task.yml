@@ -3,7 +3,7 @@ description: 기능 구현, 문서, 테스트, 리팩터링 등 세부 작업
 body:
   - type: markdown
     attributes:
-      value: 오른쪽 메뉴에서 종류·영역 라벨을 지정하세요. 마일스톤은 영역 라벨에 맞춰 자동으로 연결됩니다.
+      value: 오른쪽 메뉴에서 종류·영역 라벨을 지정해 주세요. 마일스톤은 영역 라벨에 맞춰 자동으로 연결돼요.
   - type: textarea
     id: goal
     attributes:
