@@ -1,0 +1,62 @@
+name: 문서 리뷰
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened]
+    paths:
+      - "**/*.md"
+
+concurrency:
+  group: docs-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Claude Code 설치
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash -s stable
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: PR diff 저장
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .review
+          gh pr diff "$PR" -R "$GITHUB_REPOSITORY" > .review/pr.diff
+      # Claude에는 읽기 도구만 주고 GitHub 토큰은 넘기지 않아요.
+      - name: 리뷰 생성
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude --bare -p "$(cat scripts/docs-review/prompt.md)" \
+            --model claude-opus-5-5 \
+            --effort medium \
+            --tools "Read,Glob,Grep" \
+            --allowedTools "Read,Glob,Grep" \
+            --max-turns 30 \
+            --max-budget-usd 2 \
+            --output-format json \
+            --json-schema "$(cat scripts/docs-review/review-schema.json)" \
+            > "$RUNNER_TEMP/result.json" || true
+          jq -r '"비용: $\(.total_cost_usd // 0), 턴: \(.num_turns // 0)"' "$RUNNER_TEMP/result.json" || true
+      - name: 리뷰 게시
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/docs-review/build-review.ts "$RUNNER_TEMP/result.json" .review/pr.diff "$HEAD_SHA" > "$RUNNER_TEMP/payload.json"
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" --input "$RUNNER_TEMP/payload.json" > /dev/null
