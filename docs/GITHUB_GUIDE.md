@@ -93,6 +93,7 @@ https://github.com/NARi3040/KJG-SW-AI-W11-React/compare/main...octocat/12?quick_
 ### ⑥ CI와 리뷰
 
 - PR 아래쪽에서 `check`가 통과했는지 봐요. 실패하면 **Details**로 로그를 확인해요.
+- `.md` 파일을 바꿨다면 Claude가 [문서 작성 원칙](technical-writing-principles.md)으로 리뷰한 코멘트가 달려요. 참고해서 고칠지 정해요.
 - 수정은 같은 브랜치에 커밋하고 `git push`하면 PR에 자동으로 쌓여요.
 - 리뷰 반영이 끝나면 **Re-request review**를 눌러요.
 
@@ -107,6 +108,11 @@ git switch main
 git pull origin main
 git branch -D octocat/12
 ```
+
+### 매일 할 일
+
+- 저장소 **Discussions** 탭 → **New discussion** → **Daily Scrum** 카테고리를 골라 스크럼을 써요.
+- 회의할 때는 **Core Time** 카테고리에 글을 만들고, 끝나면 결정사항을 본문에 정리해요.
 
 ## 2. 자주 겪는 문제
 

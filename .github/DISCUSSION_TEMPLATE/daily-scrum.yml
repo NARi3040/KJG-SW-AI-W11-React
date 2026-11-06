@@ -1,0 +1,33 @@
+title: "[Daily Scrum] YYYY-MM-DD 이름"
+body:
+  - type: markdown
+    attributes:
+      value: 이슈는 `#12`처럼 번호로 적으면 링크가 걸려요.
+
+  - type: textarea
+    id: yesterday
+    attributes:
+      label: 어제 한 일
+      placeholder: |
+        - #12 VNode 생성 함수 구현, 단위 테스트 통과
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: 오늘 할 일
+      placeholder: |
+        - #15 Diff 설계 문서 작성
+    validations:
+      required: true
+
+  - type: textarea
+    id: blockers
+    attributes:
+      label: 막힌 점
+      description: 없으면 '없음'이라고 적어 주세요.
+      placeholder: |
+        - Patch 형식이 정해지지 않아 #18 진행 대기
+    validations:
+      required: true

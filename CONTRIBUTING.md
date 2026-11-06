@@ -76,6 +76,18 @@ feat: VNode 생성 함수 추가
 - 작성자를 제외한 1명 이상이 승인하면 머지할 수 있어요. 머지는 Squash만 허용해요.
 - Squash 머지에서는 PR 제목이 `main`의 커밋 제목이 될 수 있으므로, PR 제목도 커밋 메시지 형식으로 써요.
 
+### 문서 리뷰
+
+- 문서는 [문서 작성 원칙](docs/technical-writing-principles.md)에 맞춰 써요.
+- `.md` 파일이 바뀐 PR은 Claude가 이 원칙으로 리뷰하고 인라인 코멘트를 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
+- 리뷰는 PR을 열 때 한 번만 실행돼요. 수정 후 다시 받으려면 PR을 닫았다가 다시 열어요.
+- Claude의 코멘트는 참고용이에요. 반영 여부는 작성자와 리뷰어가 정하고, 사람 1명의 승인은 그대로 필요해요.
+
+## Discussions
+
+- **Daily Scrum**: `Daily Scrum` 카테고리에 매일 각자 글을 하나씩 써요. 템플릿이 자동으로 채워져요.
+- **Core Time**: `Core Time` 카테고리에 회의마다 글을 하나 만들고, 논의는 댓글로 남겨요. 끝나면 결정사항을 본문에 정리하고 반영할 이슈나 문서를 링크해요.
+
 ## `main` 브랜치 보호
 
 - PR을 통해서만 머지하고, 승인 1명 이상을 요구해요.
@@ -124,4 +136,22 @@ gh api -X PUT repos/NARi3040/KJG-SW-AI-W11-React/branches/main/protection --inpu
   "restrictions": null
 }
 JSON
+```
+
+### Discussions 카테고리
+
+Discussions 탭 → Categories 옆 연필 아이콘 → **New category**에서 아래 카테고리를 만들어요. API로는 만들 수 없어요. 템플릿은 slug가 `.github/DISCUSSION_TEMPLATE/`의 파일 이름과 같은 카테고리에만 적용돼요. slug는 이름에서 자동으로 만들어져요.
+
+| 이름 | slug | 형식 |
+|---|---|---|
+| Daily Scrum | `daily-scrum` | Open-ended discussion |
+| Core Time | `core-time` | Open-ended discussion |
+
+### Claude 문서 리뷰
+
+1. [Claude GitHub App](https://github.com/apps/claude)을 이 저장소에 설치해요.
+2. Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하면 키를 입력하라고 나와요.
+
+```bash
+gh secret set ANTHROPIC_API_KEY -R NARi3040/KJG-SW-AI-W11-React
 ```

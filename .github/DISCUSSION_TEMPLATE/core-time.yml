@@ -1,0 +1,35 @@
+title: "[Core Time] YYYY-MM-DD"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        논의 과정과 공유 자료는 댓글로 이어서 남겨요.
+        끝나면 결정사항을 본문에 정리해요. 결정이 VNode 구조나 Patch 형식을 바꾸면 `common-format` 이슈를 만들고 `docs/design/vnode-spec.md`에 반영해요.
+
+  - type: textarea
+    id: topics
+    attributes:
+      label: 논의할 주제
+      placeholder: |
+        - Patch 객체에 담을 정보 결정
+        - Diff에서 key를 쓸지 결정
+    validations:
+      required: true
+
+  - type: textarea
+    id: issues
+    attributes:
+      label: 오늘 완료할 이슈
+      description: 이슈 번호와 오늘 끝낼 범위를 적어 주세요.
+      placeholder: |
+        - #12 VNode 설계 문서 확정
+    validations:
+      required: true
+
+  - type: textarea
+    id: decisions
+    attributes:
+      label: 결정사항
+      description: 회의가 끝나면 본문을 수정해 채워요. 반영할 문서나 이슈도 함께 적어요.
+      placeholder: |
+        - Patch는 type 필드로 종류를 구분해요 → vnode-spec.md 반영 (#20)
