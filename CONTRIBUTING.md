@@ -16,7 +16,7 @@
 ## 이슈
 
 - 마일스톤은 기능 단위이고, 이슈는 세부 작업 단위로 작성한다. 이슈 간 부모-자식 연결(Sub-issue)은 쓰지 않는다.
-- 이슈는 [작업](.github/ISSUE_TEMPLATE/task.md) 또는 [버그](.github/ISSUE_TEMPLATE/bug.md) 템플릿으로 작성한다.
+- 이슈는 [작업](.github/ISSUE_TEMPLATE/task.yml) 또는 [버그](.github/ISSUE_TEMPLATE/bug.yml) 템플릿으로 작성한다.
 - 이슈에는 종류·영역 라벨을 하나씩 지정한다. Phase 라벨은 해당할 때 붙인다. 버그 템플릿에는 `bug` 라벨이 자동으로 붙는다.
 - 영역 라벨을 달면 이름이 같은 마일스톤이 자동으로 연결된다. (예: `area: diff` → `diff`) 새 영역을 만들 때는 라벨과 마일스톤을 같은 이름으로 함께 만든다.
 

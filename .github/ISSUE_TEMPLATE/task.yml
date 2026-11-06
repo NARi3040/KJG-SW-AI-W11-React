@@ -1,0 +1,32 @@
+name: 작업
+description: 기능 구현, 문서, 테스트, 리팩터링 등 세부 작업
+body:
+  - type: markdown
+    attributes:
+      value: 오른쪽 메뉴에서 종류·영역 라벨을 지정하세요. 마일스톤은 영역 라벨에 맞춰 자동으로 연결됩니다.
+  - type: textarea
+    id: goal
+    attributes:
+      label: 목표
+      description: 무엇을, 왜. 1~3줄
+    validations:
+      required: true
+  - type: textarea
+    id: todo
+    attributes:
+      label: 할 일
+      value: "- [ ] "
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      value: "- [ ] "
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고
+      description: 관련 이슈, 문서, 먼저 끝나야 하는 작업

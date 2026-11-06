@@ -1,0 +1,39 @@
+name: 버그
+description: 의도와 다르게 동작하는 문제
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 오른쪽 메뉴에서 영역 라벨을 지정하세요. 마일스톤은 영역 라벨에 맞춰 자동으로 연결됩니다.
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 증상
+      description: 실제로 어떻게 동작하는지
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 절차
+      value: "1. "
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 동작
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 환경
+      value: |
+        - 브라우저:
+        - OS:
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고
+      description: 에러 메시지, 스크린샷, 관련 이슈
