@@ -46,5 +46,5 @@
 - `main`에서 작업하지 않아요. 브랜치는 `GitHub사용자명/이슈번호` 형식이에요. 사용자명은 `gh api user --jq .login`으로 확인하고, 확인할 수 없으면 담당자에게 물어요.
 - 커밋은 담당자가 요청할 때만 해요.
 - 커밋 메시지는 한국어로, `feat: VNode 생성 함수 추가`처럼 Conventional Commits 형식으로 써요.
-- PR은 [템플릿](.github/PULL_REQUEST_TEMPLATE.md)을 채우고 `closes #이슈번호`를 남겨요.
+- PR은 [템플릿](.github/PULL_REQUEST_TEMPLATE.md)을 채우고 `closes #이슈번호`를 남겨요. 저장소 설정이나 문서만 바꾸면 [설정·문서 템플릿](.github/PULL_REQUEST_TEMPLATE/setting.md)을 써요.
 - 그 밖의 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md)를 따라요.

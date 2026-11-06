@@ -35,8 +35,8 @@ npm test
 
 ### ① 이슈 만들기
 
-1. 저장소 **Issues** 탭 → **New issue** → **작업 이슈** 또는 **버그 제보** 템플릿을 골라요.
-2. 오른쪽 메뉴에서 **Assignees**에 나를 넣고, **Labels**에서 종류·영역 라벨을 골라요. 마일스톤은 영역 라벨에 맞춰 자동으로 연결돼요. 라벨 기준은 [CONTRIBUTING.md](../CONTRIBUTING.md#라벨)에 있어요.
+1. 저장소 **Issues** 탭 → **New issue** → **작업 이슈** 또는 **버그 제보** 템플릿을 골라요. 저장소 설정이나 문서를 바꿀 때는 **설정·문서 변경** 템플릿을 골라요.
+2. 오른쪽 메뉴에서 **Assignees**에 나를 넣고, **Labels**에서 종류·영역 라벨을 골라요. 마일스톤은 영역 라벨에 맞춰 자동으로 연결돼요. 설정·문서 변경 이슈에는 종류 라벨만 골라요. 라벨 기준은 [CONTRIBUTING.md](../CONTRIBUTING.md#라벨)에 있어요.
 3. 만들어진 이슈 번호를 기억해요. (예: `#12`)
 
 ### ② 브랜치 만들기
@@ -83,6 +83,12 @@ git push -u origin octocat/12
 2. 제목은 커밋 메시지와 같은 형식으로 써요. (예: `feat: VNode 생성 함수 추가`)
 3. 자동으로 뜨는 템플릿을 채우고 **`closes #12`** 를 남겨요. 머지되면 이슈가 자동으로 닫혀요.
 4. 오른쪽 **Reviewers**에서 리뷰어를 지정해요.
+
+저장소 설정이나 문서만 바꾸는 PR은 아래 주소로 열면 설정·문서 템플릿이 채워져요. `octocat/12`는 내 브랜치로 바꿔 써요.
+
+```text
+https://github.com/NARi3040/KJG-SW-AI-W11-React/compare/main...octocat/12?quick_pull=1&template=setting.md
+```
 
 ### ⑥ CI와 리뷰
 

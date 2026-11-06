@@ -16,8 +16,9 @@
 ## 이슈
 
 - 마일스톤은 기능 단위이고, 이슈는 세부 작업 단위로 작성해요. 이슈 간 부모-자식 연결(Sub-issue)은 쓰지 않아요.
-- 이슈는 [작업](.github/ISSUE_TEMPLATE/task.yml) 또는 [버그](.github/ISSUE_TEMPLATE/bug.yml) 템플릿으로 작성해요.
+- 이슈는 [작업](.github/ISSUE_TEMPLATE/task.yml), [버그](.github/ISSUE_TEMPLATE/bug.yml), [설정·문서 변경](.github/ISSUE_TEMPLATE/setting.yml) 템플릿으로 작성해요.
 - 이슈에는 종류·영역 라벨을 하나씩 지정해요. Phase 라벨은 해당할 때 붙여요. 버그 템플릿에는 `bug` 라벨이 자동으로 붙어요.
+- 설정·문서 변경 이슈에는 종류 라벨(`chore` 또는 `documentation`)만 지정해요. 영역 라벨과 마일스톤은 필요 없어요.
 - 영역 라벨을 달면 이름이 같은 마일스톤이 자동으로 연결돼요. (예: `area: diff` → `diff`) 새 영역을 만들 때는 라벨과 마일스톤을 같은 이름으로 함께 만들어요.
 
 ### 라벨
@@ -70,6 +71,7 @@ feat: VNode 생성 함수 추가
 ## PR과 리뷰
 
 - 이슈를 해결하면 [PR 템플릿](.github/PULL_REQUEST_TEMPLATE.md)에 맞춰 PR을 올려요.
+- 저장소 설정이나 문서만 바꾸는 PR은 [설정·문서 PR 템플릿](.github/PULL_REQUEST_TEMPLATE/setting.md)을 써요. PR 화면에는 템플릿 선택 메뉴가 없어서, 비교 주소 끝에 `?quick_pull=1&template=setting.md`를 붙여 열어요.
 - PR이 올라오면 바로 리뷰해요.
 - 작성자를 제외한 1명 이상이 승인하면 머지할 수 있어요. 머지는 Squash만 허용해요.
 - Squash 머지에서는 PR 제목이 `main`의 커밋 제목이 될 수 있으므로, PR 제목도 커밋 메시지 형식으로 써요.

@@ -1,0 +1,32 @@
+name: 설정·문서 변경
+description: 저장소 설정, CI, 템플릿, 협업 문서 변경
+body:
+  - type: markdown
+    attributes:
+      value: 오른쪽 메뉴에서 종류 라벨을 지정해 주세요. 설정은 `chore`, 문서는 `documentation`이에요. 영역 라벨과 마일스톤은 필요 없어요.
+  - type: textarea
+    id: change
+    attributes:
+      label: 바꿀 내용
+      description: 어떤 설정이나 문서를 어떻게 바꾸는지 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: 이유
+      description: 왜 바꾸는지 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      value: "- [ ] "
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고
+      description: 관련 이슈, 문서, 팀에 공유할 내용
