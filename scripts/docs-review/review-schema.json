@@ -3,7 +3,7 @@
   "properties": {
     "summary": {
       "type": "string",
-      "description": "리뷰 전체 요약. 문제가 없으면 한 줄로 써요."
+      "description": "Overall review summary in Korean (해요체). Verdict on the first line."
     },
     "comments": {
       "type": "array",
@@ -12,15 +12,15 @@
         "properties": {
           "path": {
             "type": "string",
-            "description": "저장소 루트 기준 파일 경로"
+            "description": "File path relative to the repository root"
           },
           "line": {
             "type": "integer",
-            "description": "바뀐 뒤 파일 기준 줄 번호"
+            "description": "Line number in the file at the PR head"
           },
           "body": {
             "type": "string",
-            "description": "어긋난 원칙, 이유, 수정 초안"
+            "description": "Comment in Korean (해요체): principle, reason, suggested fix"
           }
         },
         "required": ["path", "line", "body"],

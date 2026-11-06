@@ -172,6 +172,6 @@ function isCommentable(
 function formatBody(summary: string, outside: ReviewComment[]): string {
   const header = `## 문서 리뷰\n\n${summary}`;
   if (outside.length === 0) return header;
-  const items = outside.map((c) => `- \`${c.path}:${c.line}\`: ${c.body}`);
-  return `${header}\n\n### 바뀌지 않은 줄에 대한 의견\n\n${items.join("\n")}`;
+  const items = outside.map((c) => `#### \`${c.path}:${c.line}\`\n\n${c.body}`);
+  return `${header}\n\n### 바뀌지 않은 줄에 대한 의견\n\n${items.join("\n\n")}`;
 }

@@ -68,8 +68,8 @@ test("diff 밖의 코멘트는 본문으로 옮긴다", () => {
   ]);
   assert.equal(payload.commit_id, "abc123");
   assert.equal(payload.event, "COMMENT");
-  assert.match(payload.body, /`docs\/a.md:7`: 바깥쪽/);
-  assert.match(payload.body, /`README.md:1`: 없는 파일/);
+  assert.match(payload.body, /#### `docs\/a.md:7`\n\n바깥쪽/);
+  assert.match(payload.body, /#### `README.md:1`\n\n없는 파일/);
 });
 
 test("모든 코멘트가 diff 안이면 본문에는 요약만 남는다", () => {
