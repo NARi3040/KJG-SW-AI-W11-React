@@ -1,0 +1,19 @@
+{
+  "name": "kjg-sw-ai-w11-react",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^24.19.2",
+    "jsdom": "^31.0.0",
+    "prettier": "3.9.10",
+    "typescript": "^7.0.2"
+  }
+}

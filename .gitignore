@@ -1,0 +1,28 @@
+# 의존성
+node_modules/
+
+# 빌드와 테스트 결과물
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# 환경 변수와 비밀 정보
+.env
+.env.*
+!.env.example
+
+# 로그
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 편집기
+.vscode/
+.idea/
+
+# AI 도구의 로컬 상태
+.omc/
+.claude/settings.local.json

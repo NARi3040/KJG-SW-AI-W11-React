@@ -1,0 +1,20 @@
+name: 영역 라벨로 마일스톤 연결
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+
+jobs:
+  link:
+    if: startsWith(github.event.label.name, 'area:')
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          LABEL: ${{ github.event.label.name }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          gh issue edit "$ISSUE" -R "$GITHUB_REPOSITORY" --milestone "${LABEL#area: }"
