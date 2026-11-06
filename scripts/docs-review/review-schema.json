@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "리뷰 전체 요약. 문제가 없으면 한 줄로 써요."
+    },
+    "comments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "저장소 루트 기준 파일 경로"
+          },
+          "line": {
+            "type": "integer",
+            "description": "바뀐 뒤 파일 기준 줄 번호"
+          },
+          "body": {
+            "type": "string",
+            "description": "어긋난 원칙, 이유, 수정 초안"
+          }
+        },
+        "required": ["path", "line", "body"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["summary", "comments"],
+  "additionalProperties": false
+}
