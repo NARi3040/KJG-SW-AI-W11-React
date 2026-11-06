@@ -12,51 +12,36 @@ concurrency:
 
 jobs:
   review:
-    if: github.event.pull_request.draft == false
+    # 리뷰 봇 앱을 설정하기 전에는 건너뛰어요.
+    if: github.event.pull_request.draft == false && vars.DOCS_REVIEW_APP_CLIENT_ID != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
-      pull-requests: write
-    env:
-      PR: ${{ github.event.pull_request.number }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
-      - uses: actions/setup-node@v7
+      # docs-review는 비공개 저장소라 공개 저장소에서 바로 uses로 부를 수 없어요.
+      # 앱 토큰으로 체크아웃해 로컬 액션으로 실행하고, 같은 토큰으로 리뷰를 게시해요.
+      - id: app-token
+        uses: actions/create-github-app-token@v3
         with:
-          node-version-file: .nvmrc
-      - name: Claude Code 설치
-        run: |
-          curl -fsSL https://claude.ai/install.sh | bash -s stable
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: PR diff 저장
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p .review
-          gh pr diff "$PR" -R "$GITHUB_REPOSITORY" > .review/pr.diff
-      # Claude에는 읽기 도구만 주고 GitHub 토큰은 넘기지 않아요.
-      - name: 리뷰 생성
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          claude --bare -p "$(cat scripts/docs-review/prompt.md)" \
-            --model claude-opus-5-5 \
-            --effort medium \
-            --tools "Read,Glob,Grep" \
-            --allowedTools "Read,Glob,Grep" \
-            --max-turns 30 \
-            --max-budget-usd 2 \
-            --output-format json \
-            --json-schema "$(cat scripts/docs-review/review-schema.json)" \
-            > "$RUNNER_TEMP/result.json" || true
-          jq -r '"비용: $\(.total_cost_usd // 0), 턴: \(.num_turns // 0)"' "$RUNNER_TEMP/result.json" || true
-      - name: 리뷰 게시
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          node scripts/docs-review/build-review.ts "$RUNNER_TEMP/result.json" .review/pr.diff "$HEAD_SHA" > "$RUNNER_TEMP/payload.json"
-          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" --input "$RUNNER_TEMP/payload.json" > /dev/null
+          client-id: ${{ vars.DOCS_REVIEW_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DOCS_REVIEW_APP_PRIVATE_KEY }}
+          repositories: |
+            ${{ github.event.repository.name }}
+            docs-review
+          permission-contents: read
+          permission-pull-requests: write
+      - uses: actions/checkout@v7
+        with:
+          repository: NARi3040/docs-review
+          ref: v1
+          token: ${{ steps.app-token.outputs.token }}
+          path: .docs-review-action
+      - uses: ./.docs-review-action
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          instructions-path: .github/docs-review.md
+          github-token: ${{ steps.app-token.outputs.token }}

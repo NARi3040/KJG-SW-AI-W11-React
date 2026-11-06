@@ -79,9 +79,9 @@ feat: VNode 생성 함수 추가
 ### 문서 리뷰
 
 - 문서는 [문서 작성 원칙](docs/technical-writing-principles.md)에 맞춰 써요.
-- `.md` 파일이 바뀐 PR은 Claude가 이 원칙으로 리뷰하고, `github-actions` 봇이 결과를 PR 리뷰로 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
+- `.md` 파일이 바뀐 PR은 Claude가 이 원칙으로 리뷰하고, 리뷰 봇(`giga-liang-wenfeng[bot]`)이 결과를 PR 리뷰로 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
 - 바뀐 줄에 대한 의견은 인라인 코멘트로, 바뀌지 않은 줄에 대한 의견은 리뷰 본문에 모아요.
-- 리뷰 방식은 [`.github/workflows/docs-review.yml`](.github/workflows/docs-review.yml)과 [`scripts/docs-review/`](scripts/docs-review/)에 있어요. 리뷰 지시는 `prompt.md`, 결과 형식은 `review-schema.json`에서 고쳐요.
+- 리뷰는 [`NARi3040/docs-review`](https://github.com/NARi3040/docs-review) 액션으로 실행해요(비공개 저장소). 이 저장소에 맞춘 맥락과 추가 검사는 [`.github/docs-review.md`](.github/docs-review.md)에서, 실행 설정은 [`.github/workflows/docs-review.yml`](.github/workflows/docs-review.yml)에서 고쳐요.
 - 리뷰는 PR을 열 때 한 번만 실행돼요. 수정 후 다시 받으려면 PR을 닫았다가 다시 열어요.
 - Claude의 코멘트는 참고용이에요. 반영 여부는 작성자와 리뷰어가 정하고, 사람 1명의 승인은 그대로 필요해요.
 
@@ -151,8 +151,19 @@ Discussions 탭 → Categories 옆 연필 아이콘 → **New category**에서 �
 
 ### 문서 리뷰
 
-Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하면 키를 입력하라고 나와요. 리뷰는 Claude Code를 `claude -p`(Agent SDK CLI)로 실행하므로 프로모션 크레딧으로도 동작해요. `anthropics/claude-code-action`은 프로모션 크레딧이 적용되지 않아 쓰지 않아요.
+Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하면 키를 입력하라고 나와요. `NARi3040/docs-review` `v1`은 Claude Code를 `claude -p`(Agent SDK CLI)로 실행해서 프로모션 크레딧으로도 동작해요.
 
 ```bash
 gh secret set ANTHROPIC_API_KEY -R NARi3040/KJG-SW-AI-W11-React
+```
+
+리뷰 봇은 직접 만든 GitHub App(`Giga-Liang Wenfeng`)이에요. docs-review가 비공개 저장소라서, 앱 토큰으로 액션을 체크아웃하고 리뷰도 앱 이름으로 남겨요. 앱을 새로 만드는 절차는 [docs-review README](https://github.com/NARi3040/docs-review#봇-이름-바꾸기)에 있어요.
+
+1. 앱의 Repository permissions를 **Contents: Read-only**, **Pull requests: Read and write**로 설정해요. 워크플로가 이 두 권한으로 토큰을 받아요.
+2. 앱을 **이 저장소와 `docs-review` 저장소 모두에** 설치해요.
+3. private key 시크릿을 먼저 등록하고, 그다음 Client ID 변수를 등록해요. 워크플로는 Client ID 변수가 없을 때만 리뷰 작업을 건너뛰어요. 변수만 있고 시크릿이 없으면 작업이 실패해요.
+
+```bash
+gh secret set DOCS_REVIEW_APP_PRIVATE_KEY -R NARi3040/KJG-SW-AI-W11-React < 키파일.pem
+gh variable set DOCS_REVIEW_APP_CLIENT_ID -R NARi3040/KJG-SW-AI-W11-React --body "Iv23..."
 ```
