@@ -157,7 +157,7 @@ Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하
 gh secret set ANTHROPIC_API_KEY -R NARi3040/KJG-SW-AI-W11-React
 ```
 
-리뷰 봇 이름은 직접 만든 GitHub App으로 정해요. 앱을 만드는 방법은 [docs-review README](https://github.com/NARi3040/docs-review#봇-이름-바꾸기)에 있어요. 앱을 이 저장소에 설치한 뒤 Client ID와 private key를 등록해요. 등록하지 않으면 `github-actions[bot]`이 리뷰를 남겨요.
+리뷰 봇은 직접 만든 GitHub App이에요. 앱을 만드는 방법은 [docs-review README](https://github.com/NARi3040/docs-review#봇-이름-바꾸기)에 있어요. docs-review가 비공개 저장소라서, 앱 토큰으로 액션을 체크아웃하고 리뷰도 앱 이름으로 남겨요. 앱을 **이 저장소와 `docs-review` 저장소 모두에** 설치한 뒤 Client ID와 private key를 등록해요. 등록하기 전에는 리뷰 작업이 건너뛰어져요.
 
 ```bash
 gh variable set DOCS_REVIEW_APP_CLIENT_ID -R NARi3040/KJG-SW-AI-W11-React --body "Iv23..."
