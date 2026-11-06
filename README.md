@@ -2,8 +2,6 @@
 
 Virtual DOM, Diff, Patch와 함수형 컴포넌트, Hooks를 TypeScript로 직접 구현하는 프로젝트예요. React, Vue 같은 외부 프레임워크는 사용하지 않아요.
 
-**상태:** 프로젝트 초기 설정 단계예요. 아직 구현 전이에요.
-
 ## 팀 구성
 
 <table align="center">
