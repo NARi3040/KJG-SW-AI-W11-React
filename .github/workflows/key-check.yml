@@ -3,13 +3,18 @@ on: pull_request
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
-      - run: curl -fsSL https://claude.ai/install.sh | bash
-      - env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          ~/.local/bin/claude --version
-          ~/.local/bin/claude -p "hi" --max-turns 1 --output-format json || true
-          echo "== bare"
-          ~/.local/bin/claude --bare -p "hi" --max-turns 1 --output-format json || true
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          show_full_output: true
+          prompt: "Reply with the single word OK. Do not use any tools."
+          claude_args: |
+            --max-turns 2
