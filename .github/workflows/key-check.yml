@@ -4,13 +4,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+      - run: curl -fsSL https://claude.ai/install.sh | bash
       - env:
-          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          echo "key length: ${#KEY}, prefix: ${KEY:0:7}"
-          echo "== models"
-          curl -s -o m.json -w "%{http_code}\n" https://api.anthropic.com/v1/models -H "x-api-key: $KEY" -H "anthropic-version: 2023-06-01"
-          jq -c '{error, ids: [.data[]?.id]}' m.json
-          echo "== message"
-          curl -s -w "\n%{http_code}\n" https://api.anthropic.com/v1/messages -H "x-api-key: $KEY" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
-            -d '{"model":"claude-opus-5-5","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}'
+          ~/.local/bin/claude --version
+          ~/.local/bin/claude -p "hi" --max-turns 1 --output-format json || true
+          echo "== bare"
+          ~/.local/bin/claude --bare -p "hi" --max-turns 1 --output-format json || true
