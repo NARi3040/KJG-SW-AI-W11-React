@@ -25,7 +25,7 @@ Virtual DOM, Diff, Patch와 함수형 컴포넌트, Hooks를 TypeScript로 직�
 
 ## 시작하기
 
-Node.js 24가 필요해요.
+Node.js 26이 필요해요.
 
 ```bash
 npm ci
