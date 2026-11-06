@@ -4,6 +4,25 @@ Virtual DOM, Diff, Patch와 함수형 컴포넌트, Hooks를 TypeScript로 직�
 
 **상태:** 프로젝트 초기 설정 단계예요. 아직 구현 전이에요.
 
+## 팀 구성
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <a href="https://github.com/NARi3040"><img src="https://github.com/NARi3040.png?size=200" width="150" alt="박준호"></a><br><br>
+      <a href="https://github.com/NARi3040"><b>박준호</b></a>
+    </td>
+    <td align="center" width="33%">
+      <a href="https://github.com/dohyunrho"><img src="https://github.com/dohyunrho.png?size=200" width="150" alt="노도현"></a><br><br>
+      <a href="https://github.com/dohyunrho"><b>노도현</b></a>
+    </td>
+    <td align="center" width="33%">
+      <a href="https://github.com/choimoohun"><img src="https://github.com/choimoohun.png?size=200" width="150" alt="최무헌"></a><br><br>
+      <a href="https://github.com/choimoohun"><b>최무헌</b></a>
+    </td>
+  </tr>
+</table>
+
 ## 시작하기
 
 Node.js 24가 필요해요.
