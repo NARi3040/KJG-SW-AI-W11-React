@@ -79,7 +79,9 @@ feat: VNode 생성 함수 추가
 ### 문서 리뷰
 
 - 문서는 [문서 작성 원칙](docs/technical-writing-principles.md)에 맞춰 써요.
-- `.md` 파일이 바뀐 PR은 Claude가 이 원칙으로 리뷰하고 인라인 코멘트를 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
+- `.md` 파일이 바뀐 PR은 Claude가 이 원칙으로 리뷰하고, `github-actions` 봇이 결과를 PR 리뷰로 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
+- 바뀐 줄에 대한 의견은 인라인 코멘트로, 바뀌지 않은 줄에 대한 의견은 리뷰 본문에 모아요.
+- 리뷰 방식은 [`.github/workflows/docs-review.yml`](.github/workflows/docs-review.yml)과 [`scripts/docs-review/`](scripts/docs-review/)에 있어요. 리뷰 지시는 `prompt.md`, 결과 형식은 `review-schema.json`에서 고쳐요.
 - 리뷰는 PR을 열 때 한 번만 실행돼요. 수정 후 다시 받으려면 PR을 닫았다가 다시 열어요.
 - Claude의 코멘트는 참고용이에요. 반영 여부는 작성자와 리뷰어가 정하고, 사람 1명의 승인은 그대로 필요해요.
 
@@ -147,10 +149,9 @@ Discussions 탭 → Categories 옆 연필 아이콘 → **New category**에서 �
 | Daily Scrum | `daily-scrum` | Open-ended discussion |
 | Core Time | `core-time` | Open-ended discussion |
 
-### Claude 문서 리뷰
+### 문서 리뷰
 
-1. [Claude GitHub App](https://github.com/apps/claude)을 이 저장소에 설치해요.
-2. Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하면 키를 입력하라고 나와요.
+Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하면 키를 입력하라고 나와요. 리뷰는 Claude Code를 `claude -p`(Agent SDK CLI)로 실행하므로 프로모션 크레딧으로도 동작해요. `anthropics/claude-code-action`은 프로모션 크레딧이 적용되지 않아 쓰지 않아요.
 
 ```bash
 gh secret set ANTHROPIC_API_KEY -R NARi3040/KJG-SW-AI-W11-React
