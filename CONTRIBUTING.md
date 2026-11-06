@@ -46,9 +46,9 @@
 
 | 라벨 | 범위 |
 |---|---|
-| `area: virtual-dom` | DOM과 Virtual DOM 변환 |
+| `area: virtual-dom` | VNode 구조, DOM과 Virtual DOM 변환 |
 | `area: diff` | Diff 알고리즘 |
-| `area: patch` | 실제 DOM 반영 |
+| `area: patch` | Patch 객체 구조와 실제 DOM 반영 |
 | `area: verify-page` | Phase 1 검증 페이지와 State History |
 | `area: component` | FunctionComponent와 자식 컴포넌트 |
 | `area: hooks` | `useState`, `useEffect`, `useMemo` |
@@ -56,7 +56,7 @@
 
 **공통 형식**
 
-VNode 구조나 Patch 형식을 바꾸는 이슈에는 위 라벨과 함께 `common-format`을 붙여요.
+VNode 구조나 Patch 형식을 정하거나 바꾸는 이슈에는 위 라벨과 함께 `common-format`을 붙여요.
 
 ## 브랜치와 커밋
 
