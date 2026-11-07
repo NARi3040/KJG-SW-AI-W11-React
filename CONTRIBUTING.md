@@ -161,7 +161,7 @@ gh secret set ANTHROPIC_API_KEY -R NARi3040/KJG-SW-AI-W11-React
 
 리뷰 봇은 직접 만든 GitHub App(`Giga-Liang Wenfeng`)이에요. docs-review가 비공개 저장소라서, 앱 토큰으로 액션을 체크아웃하고 리뷰도 앱 이름으로 남겨요. 앱을 새로 만드는 절차는 [docs-review README](https://github.com/NARi3040/docs-review#봇-이름-바꾸기)에 있어요.
 
-1. 앱의 Repository permissions를 **Contents: Read-only**, **Pull requests: Read and write**, **Checks: Read-only**, **Actions: Read-only**로 설정해요. 워크플로가 이 네 권한으로 토큰을 받아요. 권한을 바꾸면 설치된 앱 화면에서 승인해야 적용돼요.
+1. 앱의 Repository permissions를 **Contents: Read-only**, **Pull requests: Read and write**, **Checks: Read-only**, **Actions: Read-only**로 설정해요. 워크플로가 이 네 권한으로 토큰을 받아요. 권한을 바꾸면 앱을 설치한 계정의 [Installed GitHub Apps](https://github.com/settings/installations)에서 Configure를 눌러 새 권한을 승인해야 적용돼요. 승인하기 전에는 토큰 발급이 실패해서 리뷰가 돌지 않을 수 있어요.
 2. 앱을 **이 저장소와 `docs-review` 저장소 모두에** 설치해요.
 3. private key 시크릿을 먼저 등록하고, 그다음 Client ID 변수를 등록해요. 워크플로는 Client ID 변수가 없을 때만 리뷰 작업을 건너뛰어요. 변수만 있고 시크릿이 없으면 작업이 실패해요.
 
