@@ -79,7 +79,7 @@ feat: VNode 생성 함수 추가
 ### 문서 리뷰
 
 - 문서는 [문서 작성 원칙](docs/technical-writing-principles.md)에 맞춰 써요.
-- `.md` 파일이 바뀐 PR은 Claude가 이 원칙으로 리뷰하고, 리뷰 봇(`giga-liang-wenfeng[bot]`)이 결과를 PR 리뷰로 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
+- `.md` 파일이 바뀐 PR은 Claude가 이 원칙으로 리뷰하고, 리뷰 봇(`giga-deepseek[bot]`)이 결과를 PR 리뷰로 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
 - `.md` 파일과 코드가 함께 바뀐 PR은 코드도 결함 위주로 리뷰해요. 이때 CI가 끝나기를 최대 5분 기다리고, CI가 실패하면 로그 일부를 읽어서 이 PR 때문인지 판단해요. 코드만 바꾼 PR은 리뷰하지 않아요.
 - 코드와 CI 로그 일부도 Anthropic API로 전송돼요. CI 로그에 비밀 값을 출력하지 않아요.
 - 바뀐 줄에 대한 의견은 인라인 코멘트로, 바뀌지 않은 줄에 대한 의견은 리뷰 본문에 모아요.
@@ -153,7 +153,7 @@ Discussions 탭 → Categories 옆 연필 아이콘 → **New category**에서 �
 
 ### 문서 리뷰
 
-Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하면 키를 입력하라고 나와요. `NARi3040/docs-review` `v2.0.0-rc.2`는 Claude Code를 `claude -p`(Agent SDK CLI)로 실행해서 프로모션 크레딧으로도 동작해요.
+Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하면 키를 입력하라고 나와요. `NARi3040/docs-review` `v2.0.0-rc.3`은 Claude Code를 `claude -p`(Agent SDK CLI)로 실행해서 프로모션 크레딧으로도 동작해요.
 
 ```bash
 gh secret set ANTHROPIC_API_KEY -R NARi3040/KJG-SW-AI-W11-React
