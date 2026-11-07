@@ -5,8 +5,8 @@
 | 항목 | 내용 |
 |---|---|
 | 상태 | 공개 함수의 이름과 시그니처는 담당 사이의 약속이에요. 내부 함수의 이름과 구성은 제안이라 담당이 바꿔도 돼요 |
-| 다루는 요구사항 | R1-1~R1-7, R3-2 |
-| 관련 이슈 | #4, #5, #6, #7 |
+| 다루는 요구사항 | R1-1~R1-7, R3-2, R3-3 |
+| 관련 이슈 | #27, #4, #5, #6, #7 |
 
 이 문서는 함수의 분담과 순서만 다뤄요. 동작 규칙은 각 표 위에 링크한 문서를 봐 주세요. 타입(`VNode`, `Props`, `Key`, `Patch`, `Path`)은 [vnode-spec.md](vnode-spec.md)에 있어요.
 
@@ -16,7 +16,7 @@
 |---|---|---|
 | 최무헌 (`choimoohun`) | #4 | `src/vnode.ts`, `src/dom.ts` |
 | 노도현 (`dohyunrho`) | #5 | `src/diff.ts` |
-| 박준호 (`NARi3040`) | #6, #7 | `src/patch.ts`, `src/app.ts`, 검증 페이지 |
+| 박준호 (`NARi3040`) | #27, #6, #7 | 뼈대, `src/patch.ts`, `src/app.ts`, 검증 페이지 |
 
 ## 뼈대
 
@@ -24,9 +24,16 @@
 
 - `src/vnode.ts`에 [타입과 상수](vnode-spec.md#vnode)를 실제로 넣어요.
 - `src/vnode.ts`, `src/dom.ts`, `src/diff.ts`, `src/patch.ts`, `src/app.ts`에 이 문서의 **공개** 함수를 시그니처대로 선언하고, 본문은 `throw new Error("미구현")`로 둬요. 내부 함수는 넣지 않아요.
+- 아래 타입과 값도 그대로 내보내요.
 - `src/index.ts`는 모든 모듈을 `export *`로 내보내고, 지금의 빈 `export {}`와 `shortcut:` 주석을 지워요.
 
-각자 자기 함수의 본문만 채워요. 아직 구현되지 않은 함수에 기대는 테스트는 올리지 않아요. "미구현" 오류로 CI가 실패해요. 테스트 데이터는 손으로 쓴 VNode, Patch 목록, `innerHTML`로 만들어요.
+| 파일 | 내보낼 선언 |
+|---|---|
+| `src/vnode.ts` | `export type Child = VNode \| string \| number \| boolean \| null \| undefined \| Child[];` |
+| `src/app.ts` | `export type Editor = { value: string };` |
+| `src/app.ts` | `export const history: { stack: VNode[]; index: number } = { stack: [], index: -1 };` |
+
+각자 자기 함수의 본문만 채워요. 아직 구현되지 않은 함수에 기대는 테스트는 올리지 않아요. "미구현" 오류로 CI가 실패해요. 테스트 데이터는 손으로 쓴 VNode, Patch 목록, `innerHTML`로 만들어요. 규칙 문서의 테스트 중 아직 구현되지 않은 함수가 필요한 줄은 그 함수가 머지된 뒤 추가해요.
 
 ## 순서
 
@@ -39,31 +46,35 @@ flowchart LR
   A --> F["6. 찾기·제거·텍스트·이동<br/>박준호"]
   D --> G["7. 생성·교체·속성<br/>박준호"]
   F --> G
+  C --> G
   C --> H["8. 페이지 흐름<br/>박준호"]
   E --> H
   G --> H
   E --> I["9. key 비교<br/>노도현"]
-  H --> J["10. 화면과 브라우저 확인<br/>박준호"]
+  H --> K["10. key가 필요한 확인 추가<br/>박준호"]
+  I --> K
+  K --> J["11. 화면과 브라우저 확인<br/>박준호"]
 ```
 
 | 단계 | 담당 | 내용 | 먼저 있어야 하는 것 |
 |---|---|---|---|
-| 1 | 박준호 | [뼈대](#뼈대) PR | 이 문서의 PR 머지. **모두가 기다려요. 가장 먼저 올려요** |
+| 1 | 박준호 | [뼈대](#뼈대) PR (#27) | 이 문서의 PR 머지. **모두가 기다려요. 가장 먼저 올려요** |
 | 2 | 최무헌 | `createTextVNode`, `h` | 1 |
 | 3 | 최무헌 | DOM 읽기, HTML 직렬화 | 2 |
 | 4 | 최무헌 | `setProp`, `applyProps`, `createDOM`, `mountArea` | 2 |
 | 5 | 노도현 | `diff` 위치 비교까지. `lis`와 key 비교 제외 | 1. 손으로 쓴 VNode로 시작하고, `h`가 구현되면 써도 돼요 |
 | 6 | 박준호 | `resolve`, `locateTargets`, `REMOVE`·`TEXT`·`MOVE` 적용 | 1. 테스트용 DOM은 `innerHTML`로 만들어요 |
 | 7 | 박준호 | `CREATE`·`REPLACE`·`PROPS` 적용, `formatPatches` | 4, 6, 그리고 `toHTML`(3) |
-| 8 | 박준호 | `src/app.ts` 전체 | 3, 4, 5, 7 |
+| 8 | 박준호 | `src/app.ts` 전체. [시연 시나리오](verify-page.md#시연-시나리오)는 1–5단계와 그 뒤로가기까지 확인해요 | 3, 4, 5, 7. key 비교 전이라 시나리오 6단계는 `MOVE`가 아니라 `REPLACE` 3개가 나와요 |
 | 9 | 노도현 | `lis`, `diffKeyed`와 내부 함수 | 5 |
-| 10 | 박준호 | 시작 코드, 화면, 브라우저 기능 테스트 | 8. **페이지 경로와 화면 배치를 정한 뒤에 해요** |
+| 10 | 박준호 | 시나리오 6–7단계와 [무작위 테스트](patch.md#테스트) 추가 | 8, 9 |
+| 11 | 박준호 | 시작 코드, 화면, 브라우저 기능 테스트 | 10. **페이지 경로와 화면 배치를 정한 뒤에 해요** |
 
 각 단계가 끝나면 AGENTS.md의 검사를 통과한 뒤 다음 단계로 넘어가요.
 
 ## 최무헌: `src/vnode.ts`
 
-규칙: [virtual-dom.md의 `h`](virtual-dom.md#h). `Child`는 `VNode | string | number | boolean | null | undefined | Child[]`예요.
+규칙: [virtual-dom.md의 `h`](virtual-dom.md#h). `Child`는 [뼈대](#뼈대)에 있어요.
 
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
@@ -97,7 +108,7 @@ flowchart LR
 | `toHTML(v: VNode): string` | 공개 | 한 줄 HTML. 원문 텍스트 요소는 이스케이프하지 않아요 | `<style>a > b</style>`이 그대로 |
 | `canIndent(v: VNode): boolean` | 내부 | 줄을 바꿔도 내용이 같은지 판단해요 | 텍스트가 섞이거나 `pre`, `textarea`면 `false` |
 | `toPrettyHTML(v: VNode, depth: number): string` | 내부 | 들여쓴 HTML | `depth`마다 두 칸 |
-| `sourceOf(root: VNode): string` | 공개 | 루트 안쪽의 textarea용 소스 | [virtual-dom.md의 예시](virtual-dom.md#vnode--html). `fromHTML(sourceOf(v))`가 `v`와 같음 |
+| `sourceOf(root: VNode): string` | 공개 | 루트 안쪽의 textarea용 소스 | [virtual-dom.md의 예시](virtual-dom.md#vnode--html). [무작위 입력](virtual-dom.md#무작위-입력)에서 `fromHTML(sourceOf(v))`가 `v`와 같음 |
 
 ### DOM 쓰기
 
@@ -106,7 +117,7 @@ flowchart LR
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
 | `setStyle(el: Element, next: PropValue): void` | 내부 | `setProp`의 `style` 처리 | 문자열은 `cssText`, 객체는 `el.style`에 복사 |
-| `setProp(el: Element, key: string, next: PropValue): void` | 공개 | 속성 하나 반영. Phase 1에서 `on*`은 아무것도 하지 않아요 | `class` 삭제 후 빈 `class` 없음. `checked: ""`면 프로퍼티가 `true` |
+| `setProp(el: Element, key: string, next: PropValue): void` | 공개 | 속성 하나 반영. Phase 1에서 `on*`은 아무것도 하지 않아요 | `class` 삭제 후 빈 `class` 없음. `checked: ""`면 프로퍼티가 `true`. `<output value="x"><b>y</b></output>`의 자식이 남음 |
 | `applyProps(el: Element, props: Props): void` | 공개 | `value` 외 속성을 먼저, `value`를 마지막에 `setProp`해요 | `range`의 `min`, `max`, `value`에서 값이 잘리지 않음 |
 | `createDOM(v: VNode): Node` | 공개 | 새 DOM을 만들어요. 자식 다음에 `applyProps` | 컴포넌트 VNode면 오류. `select`의 `value`가 반영됨 |
 | `mountArea(container: Element, vnode: VNode): void` | 공개 | 영역을 비우고 새로 그려요 | 영역의 자식이 루트 하나 |
@@ -135,7 +146,7 @@ flowchart LR
 
 규칙: [diff.md의 key 비교](diff.md#key-비교), [LIS](diff.md#lis). 이 단계 전까지 `diffChildren`은 배열끼리 항상 `diffUnkeyed`를 불러요.
 
-Phase 1에 포함하되 마지막에 구현해요(Notion 결정 F). 늦어지면 4–5단계만 빼고 남은 구간을 전부 `REMOVE` + `CREATE`할 수 있어요. 결과는 같고 DOM 변경만 늘어요. 이때 `lis`, `keyIndexMap`, `findMatch`, `emitPlacement`가 빠지고 시나리오 6단계의 값이 바뀌어요.
+Phase 1에 포함하되 마지막에 구현해요(Notion 결정 F). 늦어지면 key 비교의 4–5단계만 빼고 남은 구간을 전부 `REMOVE` + `CREATE`할 수 있어요. 결과는 같고 DOM 변경만 늘어요. 이때 `lis`, `keyIndexMap`, `findMatch`, `emitPlacement`가 빠지고 시나리오 6단계의 Patch와 DOM 변경 횟수가 바뀌어요.
 
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
@@ -156,20 +167,20 @@ Phase 1에 포함하되 마지막에 구현해요(Notion 결정 F). 늦어지면
 | `applyStructure(patches: Patch[], targets: Target[]): void` | 내부 | 2단계. `REMOVE`, `REPLACE`, `TEXT`, `MOVE` 떼기 | 형제 여러 개 동시 삭제 |
 | `applyInsertions(patches: Patch[], targets: Target[]): void` | 내부 | 3단계. `CREATE`, `MOVE`를 Patch 순서대로 넣어요 | 이동한 노드가 같은 객체(`===`) |
 | `applyPropPatches(patches: Patch[], targets: Target[]): void` | 내부 | 4단계. `remove`를 `setProp(el, k, null)`로 지우고 `applyProps(el, set)`를 불러요 | 새 `option`과 함께 `select` 값 변경 |
-| `applyPatches(container: Node, patches: Patch[]): void` | 공개 | 위 네 함수를 차례로 불러요. 예외를 잡지 않아요 | 무작위 key 목록에서 새로 그린 결과와 같음 |
+| `applyPatches(container: Node, patches: Patch[]): void` | 공개 | 위 네 함수를 차례로 불러요. 예외를 잡지 않아요 | 손으로 쓴 Patch로 형제 삭제와 이동 후 DOM이 기대와 같음. 무작위 테스트는 단계 10이에요 |
 | `formatPatches(patches: Patch[]): string` | 공개 | `node`는 `toHTML`로, 함수는 `"ƒ"`로 바꾼 JSON | [patch.md의 예시](patch.md#함수)와 같음 |
 
 ## 박준호: `src/app.ts`
 
-규칙: [verify-page.md의 함수](verify-page.md#함수), [Patch 실패](verify-page.md#patch-실패). `Editor`는 `{ value: string }`이고, `history`는 `{ stack: VNode[], index: number }`예요.
+규칙: [verify-page.md의 함수](verify-page.md#함수), [Patch 실패](verify-page.md#patch-실패). `Editor`와 `history`는 [뼈대](#뼈대)에 있어요.
 
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
 | `load(real: Element, editor: Editor): void` | 공개 | 읽기, 새로 그리기, textarea 채우기, `history` 초기화 | `index`가 0, `stack` 길이가 1 |
 | `applyOrRestore(real: Element, cur: VNode, patches: Patch[]): void` | 내부 | `applyPatches`가 실패하면 `mountArea(real, cur)` 후 다시 던져요 | 복구 후 자가 검사 통과 |
-| `onPatch(real: Element, editor: Editor): Patch[]` | 공개 | `fromHTML`, `diff`, `applyOrRestore`, `history` 추가, textarea 다시 채우기 | [시연 시나리오](verify-page.md#시연-시나리오) 1–6단계. 실패 시 `history`, textarea 그대로 |
+| `onPatch(real: Element, editor: Editor): Patch[]` | 공개 | `fromHTML`, `diff`, `applyOrRestore`, `history` 추가, textarea 다시 채우기 | 시나리오 1–5단계(단계 8), 6단계(단계 10). 실패 시 `history`, textarea 그대로 |
 | `canGo(delta: -1 \| 1): boolean` | 공개 | 그 방향으로 갈 수 있는지 봐요 | 로드 직후 `canGo(-1)`이 `false` |
-| `go(real: Element, editor: Editor, delta: -1 \| 1): Patch[] \| null` | 공개 | `diff`, `applyOrRestore`, textarea, `index` 이동 | 시나리오 7단계 |
+| `go(real: Element, editor: Editor, delta: -1 \| 1): Patch[] \| null` | 공개 | `diff`, `applyOrRestore`, textarea, `index` 이동 | 5단계까지의 뒤로가기(단계 8), 시나리오 7단계(단계 10) |
 | `countMutations<T>(target: Node, fn: () => T): { result: T; mutations: number }` | 공개 | `takeRecords`로 세고 `finally`로 `disconnect`해요 | 시나리오의 DOM 변경 횟수 |
 
 시작 코드와 화면은 함수를 아직 나눌 수 없어요. 페이지 경로와 화면 배치가 [미정](verify-page.md#미정)이기 때문이에요. 정해지면 이 문서에 추가해요.
@@ -192,5 +203,5 @@ Patch의 형식과 순서는 [vnode-spec.md의 약속](vnode-spec.md#diff와-pat
 
 | 항목 | 영향 |
 |---|---|
-| 페이지 경로와 시작 코드, 화면 배치와 요소 `id` | 단계 10 |
+| 페이지 경로와 시작 코드, 화면 배치와 요소 `id` | 단계 11 |
 | #4~#7을 세부 이슈로 나눌지 | 이슈의 할 일에 "세부 이슈로 나누기"가 있어요. 위 단계를 그대로 쓸 수 있어요 |

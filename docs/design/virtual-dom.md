@@ -5,7 +5,7 @@
 | 항목 | 내용 |
 |---|---|
 | 상태 | 공통 형식 합의 완료 ([vnode-spec.md](vnode-spec.md)) |
-| 다루는 요구사항 | R1-1, R1-4, R3-2 |
+| 다루는 요구사항 | R1-1, R1-4, R3-2, R3-3 |
 | 관련 이슈 | #4 |
 | 소스 파일 | `src/vnode.ts`, `src/dom.ts`, `src/dom.test.ts` |
 
@@ -77,7 +77,7 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 
 `toHTML`의 규칙이에요.
 
-- 값이 `null`, `undefined`, `false`이거나 함수인 속성은 쓰지 않아요.
+- 값이 `null`, `undefined`, `false`이거나 함수, 객체인 속성은 쓰지 않아요. 그래서 객체로 넣은 `style`은 `toHTML`과 Patch 로그에 나오지 않아요.
 - 값이 `true`나 빈 문자열인 속성은 이름만 써요. (예: `<input checked>`)
 - 속성 값과 텍스트의 `&`, `<`, `>`, `"`를 이스케이프해요.
 - `style`, `xmp`, `iframe`, `noembed`, `noframes`의 내용은 이스케이프하지 않아요. 파서가 이 내용의 문자 참조를 풀지 않아서, 이스케이프하면 Patch할 때마다 내용이 바뀌어요.
@@ -113,7 +113,7 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 
 ## `setProp`
 
-위에서부터 먼저 맞는 줄을 적용해요. `off`는 `next`가 `null`, `undefined`, `false`인 경우예요.
+위에서부터 먼저 맞는 줄 **하나**를 적용해요. `off`는 `next`가 `null`, `undefined`, `false`인 경우예요.
 
 | `key` | 처리 | 이유 |
 |---|---|---|
@@ -121,8 +121,13 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 | `class` | `off`면 속성 제거, 아니면 `className` 대입 | 비우기만 하면 `class=""`가 남아요 |
 | `style` | `off`면 속성 제거. 문자열이면 `cssText` 대입. 객체면 `cssText`를 비우고 `el.style`에 복사(키는 camelCase) | DOM에서 읽은 스타일은 문자열이에요 |
 | 그 밖 | `off`면 `removeAttribute`. 아니면 `setAttribute`, 값이 `true`면 빈 문자열이에요. 객체 값은 속성으로 쓰지 않아요 | DOM을 다시 읽었을 때 VNode와 같아야 해요 |
-| `checked`, `selected` (`el`에 그 프로퍼티가 있을 때) | 위 줄에 더해 프로퍼티에 `!off`를 대입 | 사용자가 바꾼 뒤에는 프로퍼티가 현재 상태예요. 읽어 온 값 `""`도 켜짐이에요 |
-| `value` (`el`에 그 프로퍼티가 있을 때) | 위 줄에 더해 프로퍼티에 대입, `off`면 빈 문자열 | 입력창과 `select`의 현재값은 프로퍼티예요 |
+
+"그 밖" 줄을 적용한 뒤 아래 경우에는 프로퍼티도 함께 바꿔요.
+
+| `key`와 조건 | 처리 | 이유 |
+|---|---|---|
+| `checked`, `selected` (`el`에 그 프로퍼티가 있을 때) | 프로퍼티에 `!off`를 대입 | 사용자가 바꾼 뒤에는 프로퍼티가 현재 상태예요. 읽어 온 값 `""`도 켜짐이에요 |
+| `value` (`el`이 `input`, `select`, `textarea`일 때) | 프로퍼티에 대입, `off`면 빈 문자열 | 이 요소들의 현재값은 프로퍼티예요. 다른 요소에는 대입하지 않아요. `output`은 자식이 지워져 경로가 어긋나고, `li`는 값이 `0`으로 바뀌고, `progress`는 예외가 나요 |
 
 **invoker 규칙** (Phase 2에서 구현해요. Phase 1에는 함수 리스너를 쓰는 곳이 없어요): 이벤트 이름은 `key.slice(2).toLowerCase()`예요. 요소마다 "이벤트 이름 → invoker" 맵을 `WeakMap<Element, Record<string, Invoker>>`에 둬요. invoker는 현재 함수(`fn`)를 호출하는 리스너예요. 처음 한 번만 `addEventListener`하고, 이후에는 `fn`만 바꿔요. 값이 함수가 아니면 있던 리스너를 떼요. 렌더마다 새로 생기는 화살표 함수 때문에 매번 붙였다 떼지 않기 위해서예요.
 
@@ -146,10 +151,61 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 
 - `h` 정규화: 위 표의 네 호출.
 - 읽기: 위 입력·출력 표, 공백 제거, `pre` 유지, `data-key`.
-- 왕복: `fromHTML(sourceOf(v))`가 `v`와 같은지 무작위로 확인. 무작위 생성기에서는 `p`, `li`를 빼요. 파서가 잘못된 중첩을 고쳐 읽어 비교가 성립하지 않기 때문이에요.
+- 왕복: [무작위 입력](#무작위-입력)에서 `fromHTML(sourceOf(v))`가 `v`와 같은지.
+- 다양한 태그: 아래 [HTML](#다양한-태그)로 왕복과 자가 검사를 해요.
 - `createDOM`: `select`의 `value`, `range`의 `min`/`max`/`value`, 읽어 온 `checked`.
-- `setProp`: 빈 `class` 없음, 문자열과 함수 `on*`이 모두 붙지 않음.
+- `setProp`: 빈 `class` 없음, 문자열과 함수 `on*`이 모두 붙지 않음, `output`의 자식과 `li`의 `value`가 그대로임, `progress`에 잘못된 값을 넣어도 예외가 없음.
 - Phase 2에서 추가: 핸들러를 교체해도 `addEventListener`는 1회, 새 핸들러 호출, 제거 시 해제.
+
+### 다양한 태그
+
+요소 사이의 공백과 줄바꿈은 읽을 때 버려져요. 줄을 바꿔 적어도 결과는 같아요.
+
+```text
+<section id="s" class="a b" data-x="1">
+  <h1>제목</h1>
+  <p>글 <b>굵게</b> <i>기울임</i></p>
+  <a href="#x">링크</a>
+  <ul><li data-key="a">a</li><li data-key="b">b</li></ul>
+  <ol start="3"><li>c</li></ol>
+  <table>
+    <thead><tr><th>h</th></tr></thead>
+    <tbody><tr><td colspan="2">d</td></tr></tbody>
+  </table>
+  <form>
+    <label><input type="checkbox" checked> 체크</label>
+    <input type="range" min="200" max="300" value="250">
+    <input type="text" value="t">
+    <select name="s"><option value="x">X</option><option value="y" selected>Y</option></select>
+    <textarea>  두
+줄</textarea>
+    <button type="button" value="v">버튼</button>
+  </form>
+  <pre>  공백
+유지</pre>
+  <img src="x.png" alt="그림"><br><hr>
+  <style>a > b { color: red; }</style>
+  <output value="o"><b>출력</b></output>
+</section>
+```
+
+| 그린 뒤 확인할 값 | 기대값 |
+|---|---|
+| `range`의 `value` | `"250"` |
+| 체크박스의 `checked` | `true` |
+| `select`의 `value` | `"y"` |
+| `output` 안의 `b` | `"출력"` |
+
+### 무작위 입력
+
+시드를 줄 수 있게 `Math.random` 대신 테스트 파일 안에 mulberry32 같은 난수 함수를 둬요. 시드 1–5에서 시드마다 2,000개를 돌리고, 실패 메시지에 시드, 순번, 입력을 남겨요. 이 규칙으로 만든 입력만 왕복이 성립해요.
+
+| 항목 | 규칙 | 이유 |
+|---|---|---|
+| 태그 | `div`, `span`, `section`, `ul`, `b`, `i`, `em`, `br` | `p`, `li`는 파서가 잘못된 중첩을 고쳐 읽어요 |
+| 크기 | 최상위 0–3개, 요소마다 자식 0–3개, 깊이는 5층까지 | 2026-11-07 측정에서 왕복, 쌍 비교, key 목록을 합쳐 약 6초가 걸렸어요 |
+| 속성 | `id`, `class`, `data-x`만. 값은 영문자와 숫자 | `key`는 DOM에 남지 않고, `style`은 브라우저가 고쳐 써요 |
+| 텍스트 | 영문자와 숫자만. 텍스트를 연달아 넣지 않고 주석도 넣지 않아요 | `<p>a<!--c-->b</p>`는 텍스트 2개지만 소스는 `<p>ab</p>`라 다시 읽으면 1개예요 |
 
 ## 실제 React와 다른 점
 

@@ -120,7 +120,8 @@ n은 노드 수, m은 한 부모의 자식 수예요.
 | 다섯 경우 | `CREATE`, `REMOVE`, `REPLACE`, `TEXT`, `PROPS`가 각각 나옴 |
 | 9가지 조합 | 위 표와 같음 |
 | `lis([5, 3, 4, 0])` | `[1, 2]` |
-| 직렬화 | 함수 props가 없으면 JSON 왕복 후 같음 |
+| 깊은 중첩 | `div` 아래 `b` 999겹, 맨 안쪽 `i`의 텍스트만 바꾸면 `TEXT` 1개, `path`는 0이 1,000개. 바꾸지 않으면 `[]` |
+| 직렬화 | 함수 props와 텍스트 VNode가 없는 Patch 목록은 JSON 왕복 후 같음. 텍스트 VNode의 `type`은 Symbol이라 사라져요 |
 | 불변 | 모든 VNode를 `Object.freeze`해도 오류 없음 |
 
 최소 이동은 `insertBefore` 호출 수가 아니라 `MOVE` 개수로 세요. `CREATE`도 `insertBefore`를 쓰기 때문이에요.

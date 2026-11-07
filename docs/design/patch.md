@@ -61,6 +61,8 @@ Patch: REMOVE [0, 2], REMOVE [0, 1]
 |---|---|
 | `<input type="file" value="a">` | `value` 프로퍼티 대입에서 `InvalidStateError` (jsdom에서 확인) |
 
+이 표는 확인한 예이고 전부가 아니에요. `<p a<b="1">` 같은 속성 이름은 jsdom에서 예외가 나지 않았지만, 실제 브라우저에서는 확인하지 않았어요.
+
 ## 복잡도
 
 - 찾기: O(Patch 수 × 깊이).
@@ -70,7 +72,7 @@ Patch: REMOVE [0, 2], REMOVE [0, 1]
 
 ## 테스트
 
-`src/patch.test.ts`에서 `node:test`와 `jsdom`으로 확인해요.
+`src/patch.test.ts`에서 `node:test`와 `jsdom`으로 확인해요. `diff`가 필요한 무작위 줄은 [단계 10](phase-1-plan.md#순서)에서 추가하고, 그 전에는 손으로 쓴 Patch로 확인해요.
 
 | 검사 | 기대값 |
 |---|---|
@@ -80,10 +82,13 @@ Patch: REMOVE [0, 2], REMOVE [0, 1]
 | 자식 종류 전환 | 텍스트 ↔ 배열, 배열 → 없음, 없음 → 텍스트, 텍스트 → 없음, 루트 교체 |
 | 영역 독립 | 같은 VNode로 두 영역을 그린 뒤 한쪽만 고쳐도 다른 쪽은 그대로 |
 | 속성 | 새 `option`과 함께 `select` 값 변경, 삭제 후 빈 `class` 없음 |
-| 무작위 key 목록 | 적용 결과의 `innerHTML`이 새로 그린 것과 같음. 모든 VNode를 `Object.freeze` |
+| 무작위 key 목록 | 시드 1–5, 시드마다 2,000쌍. 길이 0–12, key는 `a`–`t`에서 중복 없이 뽑아요. 노드의 20%는 key 없이, 20%는 `li` 대신 `p`로 만들어요. 적용 결과의 `innerHTML`이 새로 그린 것과 같음. 모든 VNode와 `children` 배열을 `Object.freeze` |
+| 무작위 HTML | [무작위 입력 규칙](virtual-dom.md#무작위-입력)으로 만든 두 HTML을 `fromHTML`로 읽어 `diff`, `applyPatches`한 뒤 자가 검사가 통과함. 모든 VNode와 `children` 배열을 `Object.freeze` |
 | 자가 검사 | `readArea(container.firstElementChild)`가 새 VNode와 `assert.deepStrictEqual`로 같음 |
 
 자가 검사를 `toHTML` 문자열로 비교하면 안 돼요. `value`를 마지막에 쓰므로 DOM의 속성 순서가 VNode와 달라져서(`<option selected value="be">`) 내용이 같아도 실패해요. `assert.deepStrictEqual`은 객체 키 순서를 무시해요.
+
+브라우저가 값을 고쳐 쓰는 입력에는 자가 검사를 쓸 수 없어요. `style="color:red"`는 DOM에서 `color: red;`로 읽히고, `key` 속성은 DOM에 남지 않아요.
 
 ## 실제 React와 다른 점
 
