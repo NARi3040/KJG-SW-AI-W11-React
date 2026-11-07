@@ -117,14 +117,14 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 
 | `key` | 처리 | 이유 |
 |---|---|---|
-| `on`으로 시작 | 이벤트 이름은 `key.slice(2).toLowerCase()`예요. 함수면 아래 invoker 규칙을 따르고, 함수가 아니면 있던 리스너를 떼요. 어느 경우든 속성으로 붙이지 않아요 | 문자열로 넣어도 실행 코드가 들어가지 않아요 |
+| `on`으로 시작 | **Phase 1:** 아무것도 하지 않아요. 속성으로도 리스너로도 붙이지 않아요. **Phase 2:** 아래 invoker 규칙을 따라요 | 문자열로 넣어도 실행 코드가 들어가지 않아요 |
 | `class` | `off`면 속성 제거, 아니면 `className` 대입 | 비우기만 하면 `class=""`가 남아요 |
 | `style` | `off`면 속성 제거. 문자열이면 `cssText` 대입. 객체면 `cssText`를 비우고 `el.style`에 복사(키는 camelCase) | DOM에서 읽은 스타일은 문자열이에요 |
 | 그 밖 | `off`면 `removeAttribute`. 아니면 `setAttribute`, 값이 `true`면 빈 문자열이에요. 객체 값은 속성으로 쓰지 않아요 | DOM을 다시 읽었을 때 VNode와 같아야 해요 |
 | `checked`, `selected` (`el`에 그 프로퍼티가 있을 때) | 위 줄에 더해 프로퍼티에 `!off`를 대입 | 사용자가 바꾼 뒤에는 프로퍼티가 현재 상태예요. 읽어 온 값 `""`도 켜짐이에요 |
 | `value` (`el`에 그 프로퍼티가 있을 때) | 위 줄에 더해 프로퍼티에 대입, `off`면 빈 문자열 | 입력창과 `select`의 현재값은 프로퍼티예요 |
 
-**invoker 규칙**: 요소마다 "이벤트 이름 → invoker" 맵을 `WeakMap<Element, Record<string, Invoker>>`에 둬요. invoker는 현재 함수(`fn`)를 호출하는 리스너예요. 처음 한 번만 `addEventListener`하고, 이후에는 `fn`만 바꿔요. 렌더마다 새로 생기는 화살표 함수 때문에 매번 붙였다 떼지 않기 위해서예요.
+**invoker 규칙** (Phase 2에서 구현해요. Phase 1에는 함수 리스너를 쓰는 곳이 없어요): 이벤트 이름은 `key.slice(2).toLowerCase()`예요. 요소마다 "이벤트 이름 → invoker" 맵을 `WeakMap<Element, Record<string, Invoker>>`에 둬요. invoker는 현재 함수(`fn`)를 호출하는 리스너예요. 처음 한 번만 `addEventListener`하고, 이후에는 `fn`만 바꿔요. 값이 함수가 아니면 있던 리스너를 떼요. 렌더마다 새로 생기는 화살표 함수 때문에 매번 붙였다 떼지 않기 위해서예요.
 
 ## 엣지 케이스
 
@@ -148,7 +148,8 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 - 읽기: 위 입력·출력 표, 공백 제거, `pre` 유지, `data-key`.
 - 왕복: `fromHTML(sourceOf(v))`가 `v`와 같은지 무작위로 확인. 무작위 생성기에서는 `p`, `li`를 빼요. 파서가 잘못된 중첩을 고쳐 읽어 비교가 성립하지 않기 때문이에요.
 - `createDOM`: `select`의 `value`, `range`의 `min`/`max`/`value`, 읽어 온 `checked`.
-- `setProp`: 빈 `class` 없음, 문자열 `on*`이 붙지 않음, 핸들러를 교체해도 `addEventListener`는 1회, 새 핸들러 호출, 제거 시 해제.
+- `setProp`: 빈 `class` 없음, 문자열과 함수 `on*`이 모두 붙지 않음.
+- Phase 2에서 추가: 핸들러를 교체해도 `addEventListener`는 1회, 새 핸들러 호출, 제거 시 해제.
 
 ## 실제 React와 다른 점
 

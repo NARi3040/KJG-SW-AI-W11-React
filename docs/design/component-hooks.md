@@ -4,7 +4,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 상태 | 팀 합의 전 ([vnode-spec.md](vnode-spec.md)) |
+| 상태 | **이번 구현 범위 밖.** Phase 1 다음 작업에서 구현해요([범위와 분담](vnode-spec.md#이번-구현-범위와-분담)). 형식은 팀 합의 전이에요 |
 | 다루는 요구사항 | R2-1, R2-2, R2-3, R2-4, R2-5, R2-6, R3-2 |
 | 관련 이슈 | #8, #9 |
 | 소스 파일 | `src/component.ts`, `src/component.test.ts` |
@@ -17,7 +17,7 @@
 setState → 루트 함수 다시 실행 → expand로 자식 펼침 → diff(이전 트리, 새 트리) → applyPatches → effect 실행
 ```
 
-`diff`와 `applyPatches`는 Phase 1과 같은 코드예요(R2-6).
+`diff`와 `applyPatches`는 Phase 1과 같은 코드예요(R2-6). 이벤트 리스너는 Phase 1에 없으므로 이 작업에서 `setProp`의 [invoker 규칙](virtual-dom.md#setprop)을 함께 구현해요.
 
 ## `expand`
 

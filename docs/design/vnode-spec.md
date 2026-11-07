@@ -18,9 +18,21 @@
 | [diff.md](diff.md) | 두 VNode → Patch 목록 | `src/diff.ts` | #5 |
 | [patch.md](patch.md) | Patch 목록 → 실제 DOM 반영 | `src/patch.ts` | #6 |
 | [verify-page.md](verify-page.md) | 검증 페이지, State History, 시연 시나리오 | `src/app.ts` | #7 |
-| [component-hooks.md](component-hooks.md) | `FunctionComponent`, Hooks | `src/component.ts` | #8, #9 |
+| [component-hooks.md](component-hooks.md) | `FunctionComponent`, Hooks (이번 구현 범위 밖) | `src/component.ts` | #8, #9 |
 
 의존은 한 방향이에요. `vnode` ← `dom` ← `patch` ← `app`, `vnode` ← `diff` ← `app`이고, `component`는 `vnode`, `dom`, `diff`, `patch`를 써요. `src/index.ts`는 모든 모듈을 다시 내보내요.
+
+## 이번 구현 범위와 분담
+
+이번에는 Phase 1(R1-1~R1-7)까지만 구현해요. Phase 2와 테스트 페이지(#8, #9, #10)는 이번 범위가 아니에요.
+
+| 담당 | 이슈 | 파일 | 다른 담당에게서 받는 것 |
+|---|---|---|---|
+| vnode 담당 | #4 | `src/vnode.ts`, `src/dom.ts` | 없음 |
+| diff 담당 | #5 | `src/diff.ts` | `src/vnode.ts`의 타입, 상수, `h` |
+| patch 담당 | #6, #7 | `src/patch.ts`, `src/app.ts`, 검증 페이지 | `src/dom.ts`의 함수, `diff` |
+
+diff 담당은 DOM이 필요 없어서 손으로 쓴 VNode로, patch 담당은 손으로 쓴 Patch 목록으로 먼저 개발할 수 있어요. 둘 다 `src/vnode.ts`의 타입이 있어야 하므로 이 파일을 먼저 만들어요.
 
 ## 왜 경로 기반 Patch 목록인가
 
@@ -70,6 +82,8 @@ export interface VNode {
 ```
 
 `tsconfig.json`의 `erasableSyntaxOnly` 때문에 `enum`은 쓸 수 없어요. 그래서 `flags` 비트를 상수로 둬요.
+
+`COMPONENT`, `Component`, `Listener`는 Phase 2에서 형식을 바꾸지 않으려고 미리 둬요. Phase 1에서는 컴포넌트를 실행하지 않고 리스너를 붙이지 않아요.
 
 | 필드 | 의미 | 허용 형식 | 예시 |
 |---|---|---|---|
@@ -135,7 +149,7 @@ export type Patch =
 
 - **`TEXT`의 `path`:** 자식이 문자열인 요소는 그 요소를, 독립 텍스트 VNode는 그 텍스트 노드를 가리켜요. 적용은 둘 다 `textContent` 대입이에요.
 - **`REPLACE` 아래쪽:** 경로에 Patch를 내지 않아요. 새 서브트리는 `node` 하나로 만들어요.
-- **옛 값:** Patch에 싣지 않아요. 옛 이벤트 리스너는 요소별 맵에서 꺼내요([virtual-dom.md](virtual-dom.md#setprop)).
+- **옛 값:** Patch에 싣지 않아요. Phase 2의 옛 이벤트 리스너는 요소별 맵에서 꺼내요([virtual-dom.md](virtual-dom.md#setprop)).
 
 ## Diff와 Patch 사이의 약속
 
@@ -199,6 +213,7 @@ key 비교예요. 이전 `a b c d e f g`, 새것 `a b e c d h f g`이고 `ul`의
 | 자가 검사 | 비교 방법 정의 없음 | 테스트에서 속성 순서를 무시하고 비교 | `value`를 마지막에 써서 문자열 비교는 실패해요 |
 | key 목록의 같은 key, 다른 `type` | 엣지 케이스 표에 `REPLACE` | `REMOVE` + `CREATE` | Notion 코드의 실제 출력에 맞췄어요. 코드는 그대로예요 |
 | 이벤트 맵 | `el._vei` | `WeakMap` | DOM 타입을 확장하지 않으려고요. 동작은 같아요 |
+| 함수 리스너(invoker) | 처음부터 구현 | Phase 2에서 구현 | Phase 1에는 함수 리스너를 쓰는 곳이 없어요 |
 | 컴포넌트 반환값 | 미지원(오류 내용 없음) | VNode가 아니면 오류 | 원인을 바로 알 수 있게 해요 |
 
 ## 검증 범위
