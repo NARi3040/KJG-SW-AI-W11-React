@@ -4,7 +4,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 상태 | 팀 합의 전 ([vnode-spec.md](vnode-spec.md)) |
+| 상태 | 공통 형식 합의 완료 ([vnode-spec.md](vnode-spec.md)) |
 | 다루는 요구사항 | R1-1, R1-4, R3-2 |
 | 관련 이슈 | #4 |
 | 소스 파일 | `src/vnode.ts`, `src/dom.ts`, `src/dom.test.ts` |

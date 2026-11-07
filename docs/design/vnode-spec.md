@@ -4,7 +4,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 상태 | **팀 합의 전.** 박준호의 위임으로 Claude가 정한 안이에요. [Discussion #2](https://github.com/NARi3040/KJG-SW-AI-W11-React/discussions/2), [#3](https://github.com/NARi3040/KJG-SW-AI-W11-React/discussions/3)에서 합의하면 이 줄을 고쳐요 |
+| 상태 | **팀 합의 완료** (2026-11-07 박준호 확인). 합의한 것은 Notion 문서 0장의 결정 A–H예요. 결정 C의 JS와 Vitest는 저장소 규칙대로 TS와 `node:test`로 바꿔요. 아래 [달라진 점](#notion-문서와-달라진-점)은 Notion에 없는 내용이에요 |
 | 다루는 요구사항 | R1-1, R1-2, R1-6 |
 | 관련 이슈 | #13, #14 |
 | 원본 | [Notion 설계 문서: 경로 기반 패치 목록 VNode·Patch](https://app.notion.com/p/41188145c531811fbc6ad1c735fe709d) (JS 전체 코드와 후보 비교가 있어요) |
@@ -14,6 +14,7 @@
 | 문서 | 다루는 내용 | 소스 파일 | 이슈 |
 |---|---|---|---|
 | 이 문서 | VNode, Patch, Diff와 Patch 사이의 약속 | `src/vnode.ts` (타입, 상수) | #13, #14 |
+| [phase-1-plan.md](phase-1-plan.md) | 담당별 함수 목록, 구현 순서, 완료 확인 | 해당 없음 | #4, #5, #6, #7 |
 | [virtual-dom.md](virtual-dom.md) | VNode 생성, DOM ↔ VNode 변환, 속성 반영 | `src/vnode.ts`, `src/dom.ts` | #4 |
 | [diff.md](diff.md) | 두 VNode → Patch 목록 | `src/diff.ts` | #5 |
 | [patch.md](patch.md) | Patch 목록 → 실제 DOM 반영 | `src/patch.ts` | #6 |
@@ -26,13 +27,7 @@
 
 이번에는 Phase 1(R1-1~R1-7)까지만 구현해요. Phase 2와 테스트 페이지(#8, #9, #10)는 이번 범위가 아니에요.
 
-| 담당 | 이슈 | 파일 | 다른 담당에게서 받는 것 |
-|---|---|---|---|
-| vnode 담당 | #4 | `src/vnode.ts`, `src/dom.ts` | 없음 |
-| diff 담당 | #5 | `src/diff.ts` | `src/vnode.ts`의 타입, 상수, `h` |
-| patch 담당 | #6, #7 | `src/patch.ts`, `src/app.ts`, 검증 페이지 | `src/dom.ts`의 함수, `diff` |
-
-diff 담당은 DOM이 필요 없어서 손으로 쓴 VNode로, patch 담당은 손으로 쓴 Patch 목록으로 먼저 개발할 수 있어요. 둘 다 `src/vnode.ts`의 타입이 있어야 하므로 이 파일을 먼저 만들어요.
+담당과 함수별 순서는 [phase-1-plan.md](phase-1-plan.md)를 봐 주세요.
 
 ## 왜 경로 기반 Patch 목록인가
 

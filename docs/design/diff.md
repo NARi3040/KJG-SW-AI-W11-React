@@ -4,7 +4,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 상태 | 팀 합의 전 ([vnode-spec.md](vnode-spec.md)) |
+| 상태 | 공통 형식 합의 완료 ([vnode-spec.md](vnode-spec.md)) |
 | 다루는 요구사항 | R1-2, R3-2 |
 | 관련 이슈 | #5 |
 | 소스 파일 | `src/diff.ts`, `src/diff.test.ts` |
@@ -18,7 +18,7 @@ Patch 형식과 출력 순서의 약속은 [vnode-spec.md](vnode-spec.md#diff와
 | `diff(oldV, newV)` | `oldV`, `newV: VNode`: 컴포넌트가 없는 트리 | `Patch[]`. 변경이 없으면 `[]` |
 | `lis(arr)` | `arr: number[]`: 값 0은 제외 대상 | 최장 증가 부분수열의 **인덱스** 배열. (예: `lis([5, 3, 4, 0])` → `[1, 2]`) |
 
-`src/diff.ts`는 DOM을 쓰지 않아요. 내부 함수는 `diffNode`, `diffProps`, `diffChildren`, `diffUnkeyed`, `diffKeyed`로 나눠요.
+`src/diff.ts`는 DOM을 쓰지 않아요. 내부 함수 구성은 [phase-1-plan.md](phase-1-plan.md#노도현-srcdiffts)를 봐 주세요.
 
 ## 노드 비교
 
