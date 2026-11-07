@@ -21,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
       # docs-review는 비공개 저장소라 공개 저장소에서 바로 uses로 부를 수 없어요.
       # 앱 토큰으로 체크아웃해 로컬 액션으로 실행하고, 같은 토큰으로 리뷰를 게시해요.
@@ -34,10 +35,12 @@ jobs:
             docs-review
           permission-contents: read
           permission-pull-requests: write
+          permission-checks: read
+          permission-actions: read
       - uses: actions/checkout@v7
         with:
           repository: NARi3040/docs-review
-          ref: v1
+          ref: v2.0.0-rc.2
           token: ${{ steps.app-token.outputs.token }}
           path: .docs-review-action
       - uses: ./.docs-review-action
