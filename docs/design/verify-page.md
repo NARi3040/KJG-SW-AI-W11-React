@@ -34,7 +34,7 @@ flowchart LR
 | `onPatch(real, editor)` | 위와 같음 | `Patch[]` | 아래 표의 "Patch". 실패하면 복구 후 예외를 다시 던져요 |
 | `canGo(delta)` | `delta: -1 \| 1` | `boolean` | 그 방향으로 이동할 수 있는지. 버튼 활성화에 써요 |
 | `go(real, editor, delta)` | `real`, `editor`, `delta` | `Patch[]`, 이동할 수 없으면 `null` | 아래 표의 "뒤로·앞으로". 실패하면 복구 후 예외를 다시 던져요 |
-| `countMutations(target, fn)` | `target: Node`, `fn: () => T` | `{ result: T, mutations: number }` | `fn`이 일으킨 DOM 변경 기록 수를 세요 |
+| `countMutations(target, fn)` | `target: Node`, `fn: () => T` | `{ result: T, mutations: number }` | `fn`이 일으킨 DOM 변경 기록 수를 세요. 감시 옵션은 `{ childList: true, attributes: true, characterData: true, subtree: true }`예요 |
 
 `history`는 `{ stack: VNode[], index: number }`이고 `src/app.ts`가 `export const`로 하나만 둬요. 처음 값은 `{ stack: [], index: -1 }`이고, `load`가 필드를 바꿔 초기화해요. 테스트에서 직접 읽을 수 있어요.
 
@@ -50,7 +50,7 @@ flowchart LR
 - **Patch 후 textarea를 다시 채워요.** 파서는 잘못된 중첩을 고쳐 읽어요. `<p>a<div>b</div></p>`는 `p`가 닫히고 `div`가 형제가 되며 빈 `p`가 하나 더 생겨요. 다시 채우면 실제로 적용된 구조를 볼 수 있어요.
 - **기준은 항상 `history`예요.** 이전 VNode를 textarea에서 다시 만들지 않아요. 실제 영역의 DOM은 항상 `history.stack[history.index]`와 같아요.
 - **복제하지 않아요.** VNode는 불변이고 DOM 참조가 없어서 히스토리가 같은 객체를 그대로 저장해요.
-- **변경 횟수:** `MutationObserver`의 `takeRecords`로 그 자리에서 꺼내므로 비동기로 기다리지 않아요. `fn`이 예외를 던져도 `finally`로 `disconnect`해요.
+- **변경 횟수:** `MutationObserver`의 `takeRecords`로 그 자리에서 꺼내므로 비동기로 기다리지 않아요. `fn`이 예외를 던져도 `finally`로 `disconnect`해요. 노드 추가·제거는 `childList`, 속성은 `attributes`, 독립 텍스트 VNode의 `TEXT`는 `characterData`로 잡혀요. 깊은 노드를 보려면 `subtree`가 필요해요. `MutationObserver`는 전역이 아니라 `target.ownerDocument.defaultView`에서 꺼내요([DOM 전역 규칙](virtual-dom.md#dom-전역-규칙)).
 
 R1-4의 "테스트 영역을 그려요"는 textarea에 HTML 소스를 보여 주는 것으로 해석했어요. 태그와 속성 변경까지 다섯 경우를 모두 시연할 수 있기 때문이에요. Notion 결정 D로 확정했어요.
 
@@ -112,7 +112,7 @@ Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이�
 
 | 상황 | 처리 |
 |---|---|
-| 내용을 바꾸지 않고 Patch | Patch는 `[]`이지만 `history`에 항목이 추가되고 앞으로가기 기록이 잘려요 |
+| 내용을 바꾸지 않고 Patch | Patch는 `[]`이지만 `history`에 항목이 추가되고 앞으로가기 기록이 잘려요. 주석, `pre`, `textarea`, `key` 속성이 있어도 `[]`예요([소스 왕복](virtual-dom.md#검사)) |
 | 히스토리 끝에서 이동 | `go`는 `null`을 돌려주고 아무것도 하지 않아요. 버튼은 `canGo`로 비활성화해요 |
 | 뒤로간 뒤 Patch | 앞으로가기 기록을 잘라내요 |
 | textarea를 비우고 Patch | 루트만 남아요. 영역 자체는 그대로예요 |
@@ -122,7 +122,7 @@ Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이�
 
 ## 테스트
 
-`src/app.test.ts`에서 `node:test`와 `jsdom`으로 확인해요.
+`src/app.test.ts`에서 `node:test`와 `jsdom`으로 확인해요. 구현과 테스트는 [DOM 전역 규칙](virtual-dom.md#dom-전역-규칙)을 따라요.
 
 - 히스토리: 로드 → Patch → Patch → 뒤로 → 앞으로 → 뒤로 → Patch 순서로 실제 영역, textarea 내용, `canGo`, 앞으로가기 기록 잘림, 스냅샷이 같은 객체인지.
 - 시나리오: 위 표의 여섯 단계가 각각 해당 Patch와 DOM 변경 횟수를 내고 자가 검사를 통과하는지. 7단계 후 체크박스와 `select` 상태까지 처음과 같은지. 6–7단계는 key 비교가 필요해서 [단계 10](phase-1-plan.md#순서)에서 추가해요.
@@ -148,8 +148,3 @@ Notion 문서에 없어서 정해야 하는 내용이에요. 담당자가 정해
 |---|---|
 | 변경 없는 Patch의 저장 여부 | 지금은 R1-6대로 저장하지만, 앞으로가기 기록이 사라져요 |
 | 바뀐 노드 강조 | 선택 항목으로 미뤘어요. 하려면 `applyPatches`가 고친 노드를 돌려줘야 해요 |
-
-## 실제 React와 다른 점
-
-- React에는 히스토리 기능이 없어요. 과제의 검증 장치예요.
-- React는 DOM을 읽어 비교 기준을 만들지 않아요. 이 페이지는 사용자가 적은 HTML을 파싱해 새 VNode를 만들어요.

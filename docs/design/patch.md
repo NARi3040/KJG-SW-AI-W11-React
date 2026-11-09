@@ -26,7 +26,12 @@ Patch 형식과 Diff가 지키는 약속은 [vnode-spec.md](vnode-spec.md#patch)
 ```ts
 formatPatches([{ type: "CREATE", parentPath: [0], index: 5, node: h("p", null, "추가") }]);
 // '[{"type":"CREATE","parentPath":[0],"index":5,"node":"<p>추가</p>"}]'
+
+formatPatches([{ type: "PROPS", path: [0], set: { onclick: f }, remove: [] }]);
+// '[{"type":"PROPS","path":[0],"set":{"onclick":"ƒ"},"remove":[]}]'
 ```
+
+`CREATE`, `REPLACE`의 `node` 안에 있는 함수 속성은 `toHTML`이 쓰지 않으므로 `ƒ`로 나오지 않아요. (예: `h("button", { onclick: f }, "확인")` → `"<button>확인</button>"`) Phase 1에서는 DOM에서 읽을 때 `on*`을 버려서 함수 속성이 실제로 나오지 않아요.
 
 ## `applyPatches`의 네 단계
 
@@ -72,11 +77,12 @@ Patch: REMOVE [0, 2], REMOVE [0, 1]
 
 ## 테스트
 
-`src/patch.test.ts`에서 `node:test`와 `jsdom`으로 확인해요. `diff`가 필요한 무작위 줄은 [단계 10](phase-1-plan.md#순서)에서 추가하고, 그 전에는 손으로 쓴 Patch로 확인해요.
+`src/patch.test.ts`에서 `node:test`와 `jsdom`으로 확인해요. 구현과 테스트는 [DOM 전역 규칙](virtual-dom.md#dom-전역-규칙)을 따라요. `diff`가 필요한 무작위 줄은 [단계 10](phase-1-plan.md#순서)에서 추가하고, 그 전에는 손으로 쓴 Patch로 확인해요.
 
 | 검사 | 기대값 |
 |---|---|
 | 인덱스 밀림 | 형제 여러 개 동시 삭제(위치 비교, key 목록) 후 DOM이 새 VNode와 같음 |
+| Diff와의 계약 | [전체 예시](vnode-spec.md#전체-예시)의 두 Patch 목록을 이전 HTML로 만든 DOM(`innerHTML`)에 적용하면 새 HTML과 같음. 영역의 `innerHTML`은 `<div class="vdom-root">`로 감싼 HTML이에요. `CREATE`, `PROPS`가 있어 [단계 7](phase-1-plan.md#순서)에서 추가해요. `diff.md`의 같은 예시 테스트와 같은 데이터를 써서, `MOVE`의 `from`을 읽는 방식 같은 해석 차이를 합치기 전에 찾아요 |
 | 최소 변경 | 텍스트 하나만 바꾸면 Patch 1개, `MutationObserver` 기록 1건 |
 | DOM 재사용 | 텍스트만 바뀐 노드, key로 이동한 노드가 같은 객체(`===`) |
 | 자식 종류 전환 | 텍스트 ↔ 배열, 배열 → 없음, 없음 → 텍스트, 텍스트 → 없음, 루트 교체 |
@@ -89,8 +95,3 @@ Patch: REMOVE [0, 2], REMOVE [0, 1]
 자가 검사를 `toHTML` 문자열로 비교하면 안 돼요. `value`를 마지막에 쓰므로 DOM의 속성 순서가 VNode와 달라져서(`<option selected value="be">`) 내용이 같아도 실패해요. `assert.deepStrictEqual`은 객체 키 순서를 무시해요.
 
 브라우저가 값을 고쳐 쓰는 입력에는 자가 검사를 쓸 수 없어요. `style="color:red"`는 DOM에서 `color: red;`로 읽히고, `key` 속성은 DOM에 남지 않아요.
-
-## 실제 React와 다른 점
-
-- React는 커밋 단계에서 Fiber의 DOM 참조로 바로 고쳐요. 이 구현은 적용할 때 경로를 따라 찾아요.
-- React는 레이아웃 효과와 ref 처리까지 커밋 단계에서 해요. 이 구현에는 ref가 없어요.

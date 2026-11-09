@@ -79,9 +79,9 @@ flowchart LR
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
 | `createTextVNode(text: string \| number): VNode` | 공개 | 텍스트 VNode를 만들어요 | `createTextVNode(1).children`이 `"1"`, `flags`가 `TEXT` |
-| `normalizeChildren(raw: Child[]): { children: VNode[] \| string \| null; childFlag: number }` | 내부 | 평탄화, 버리기, 텍스트 감싸기 | `["a"]` → `"a"`와 `TEXT_CHILDREN`. `[]` → `null`과 0 |
-| `normalizeProps(props: Props \| null): { props: Props \| null; key: Key \| null }` | 내부 | `key` 분리, `className` → `class`, 빈 객체 → `null` | `{ key: "a", className: "x" }` → `{ class: "x" }`와 `"a"` |
-| `h(type: string \| Component, props?: Props \| null, ...children: Child[]): VNode` | 공개 | 위 둘을 불러 VNode를 조립하고 `flags`를 계산해요 | [virtual-dom.md의 호출 표](virtual-dom.md#h) 네 줄 |
+| `normalizeChildren(raw: Child[]): { children: VNode[] \| string \| null; childFlag: number }` | 내부 | 평탄화, 버리기, 이웃한 텍스트 합치기, 텍스트 감싸기 | `["a"]` → `"a"`와 `TEXT_CHILDREN`. `["a", 1]` → `"a1"`. `[]` → `null`과 0 |
+| `normalizeProps(props: Props \| null): { props: Props \| null; key: Key \| null }` | 내부 | `key` 분리, `className` → `class`, 빈 객체 → `null` | `{ key: "a", className: "x" }` → `{ class: "x" }`와 `"a"`. `{ key: 0 }` → `null`과 `0` |
+| `h(type: string \| Component, props?: Props \| null, ...children: Child[]): VNode` | 공개 | 위 둘을 불러 VNode를 조립하고 `flags`를 계산해요 | [virtual-dom.md의 호출 표](virtual-dom.md#h) 전부 |
 
 ## 최무헌: `src/dom.ts`
 
@@ -91,9 +91,9 @@ flowchart LR
 
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
-| `readProps(el: Element): Props \| null` | 내부 | `on*` 버리기, `data-key`를 `key`로도 복사 | `<li data-key="a" onclick="f()">` → `{ "data-key": "a", key: "a" }` |
-| `readChildren(parent: ParentNode, keepWs: boolean): (VNode \| string)[]` | 내부 | 공백, 주석, `script` 버리기. 요소는 `toVNode` | `<p> </p>`의 결과는 `[]`, `<pre> </pre>`의 결과는 `[" "]`(`keepWs` 적용) |
-| `toVNode(el: Element, keepWs?: boolean): VNode` | 공개 | 태그 이름, `readProps`, `readChildren`을 `h`에 넘겨요 | `pre`, `textarea` 안에서 `keepWs`가 켜져요 |
+| `readProps(el: Element): Props \| null` | 내부 | `on*`, `key` 속성 버리기. 속성을 다 읽은 뒤 `data-key`가 있으면 `key`로도 복사 | `<li data-key="a" onclick="f()">` → `{ "data-key": "a", key: "a" }`. `<li key="x">` → `null` |
+| `readChildren(parent: ParentNode, keepWs: boolean): (VNode \| string)[]` | 내부 | 공백(HTML 공백만), 주석, `script` 버리기. 요소는 `toVNode` | `<p> </p>`의 결과는 `[]`, `<pre> </pre>`의 결과는 `[" "]`(`keepWs` 적용), `<p>&nbsp;</p>`의 결과는 `["\u00a0"]` |
+| `toVNode(el: Element, keepWs: boolean): VNode` | 내부 | 태그 이름, `readProps`, `readChildren`을 `h`에 넘겨요 | `pre`, `textarea` 안에서 `keepWs`가 켜져요 |
 | `readArea(parent: ParentNode): VNode` | 공개 | 자식을 `div.vdom-root`로 감싸요 | 빈 영역의 `children`이 `null` |
 | `fromHTML(html: string): VNode` | 공개 | `template`으로 파싱하고 `readArea`에 넘겨요 | [virtual-dom.md의 입력·출력 표](virtual-dom.md#dom--vnode) 네 줄 |
 
@@ -105,8 +105,8 @@ flowchart LR
 |---|---|---|---|
 | `esc(s: string): string` | 내부 | `&`, `<`, `>`, `"` 이스케이프 | `"a<b"` → `"a&lt;b"` |
 | `openTag(v: VNode): string` | 내부 | 여는 태그와 속성 문자열 | `h("input", { checked: "" })` → `<input checked>` |
-| `toHTML(v: VNode): string` | 공개 | 한 줄 HTML. 원문 텍스트 요소는 이스케이프하지 않아요 | `<style>a > b</style>`이 그대로 |
-| `canIndent(v: VNode): boolean` | 내부 | 줄을 바꿔도 내용이 같은지 판단해요 | 텍스트가 섞이거나 `pre`, `textarea`면 `false` |
+| `toHTML(v: VNode): string` | 공개 | 한 줄 HTML. 원문 텍스트 요소는 이스케이프하지 않아요 | `<style>a > b</style>`이 그대로. 내용이 `"\nabc"`인 `pre`는 `<pre>\n\nabc</pre>` |
+| `canIndent(v: VNode): boolean` | 내부 | 줄을 바꿔도 내용이 같은지 판단해요 | 텍스트가 섞이거나 `pre`, `textarea`면 `false`. `false`면 서브트리 전체를 `toHTML` 한 줄로 써서 안쪽 요소도 들여쓰지 않아요 |
 | `toPrettyHTML(v: VNode, depth: number): string` | 내부 | 들여쓴 HTML | `depth`마다 두 칸 |
 | `sourceOf(root: VNode): string` | 공개 | 루트 안쪽의 textarea용 소스 | [virtual-dom.md의 예시](virtual-dom.md#vnode--html). [무작위 입력](virtual-dom.md#무작위-입력)에서 `fromHTML(sourceOf(v))`가 `v`와 같음 |
 
@@ -135,7 +135,7 @@ flowchart LR
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
 | `isSame(a: VNode, b: VNode): boolean` | 내부 | `type`과 `key`가 모두 같은지 비교해요 | 같은 태그에 다른 key면 `false` |
-| `hasKey(list: VNode[]): boolean` | 내부 | key가 하나라도 있는지 봐요 | `[]`면 `false` |
+| `hasKey(list: VNode[]): boolean` | 내부 | key가 하나라도 있는지 봐요. `key != null`로 판단해요 | `[]`면 `false`. key가 `0`이나 `""`인 노드가 있으면 `true` |
 | `diffProps(oldP: Props \| null, newP: Props \| null): { set: Props; remove: string[] } \| null` | 내부 | 바뀐 속성과 지운 속성을 구해요 | 같으면 `null`. `null`, `{ a: "1" }` → `set: { a: "1" }`, `remove: []` |
 | `diffUnkeyed(c1: VNode[], c2: VNode[], path: Path, out: Patch[]): void` | 내부 | 같은 위치끼리 비교, 남는 쪽은 `REMOVE` 또는 `CREATE` | `REMOVE`는 뒤 인덱스부터 |
 | `diffChildren(o: VNode, n: VNode, path: Path, out: Patch[]): void` | 내부 | 9가지 조합으로 나눠요 | [조합 표](diff.md#자식-비교-9가지-조합) 아홉 칸 |
@@ -181,7 +181,7 @@ Phase 1에 포함하되 마지막에 구현해요(Notion 결정 F). 늦어지면
 | `onPatch(real: Element, editor: Editor): Patch[]` | 공개 | `fromHTML`, `diff`, `applyOrRestore`, `history` 추가, textarea 다시 채우기 | 시나리오 1–5단계(단계 8), 6단계(단계 10). 실패 시 `history`, textarea 그대로 |
 | `canGo(delta: -1 \| 1): boolean` | 공개 | 그 방향으로 갈 수 있는지 봐요 | 로드 직후 `canGo(-1)`이 `false` |
 | `go(real: Element, editor: Editor, delta: -1 \| 1): Patch[] \| null` | 공개 | `diff`, `applyOrRestore`, textarea, `index` 이동 | 5단계까지의 뒤로가기(단계 8), 시나리오 7단계(단계 10) |
-| `countMutations<T>(target: Node, fn: () => T): { result: T; mutations: number }` | 공개 | `takeRecords`로 세고 `finally`로 `disconnect`해요 | 시나리오의 DOM 변경 횟수 |
+| `countMutations<T>(target: Node, fn: () => T): { result: T; mutations: number }` | 공개 | [감시 옵션](verify-page.md#함수)으로 `takeRecords`를 세고 `finally`로 `disconnect`해요 | 시나리오의 DOM 변경 횟수 |
 
 시작 코드와 화면은 함수를 아직 나눌 수 없어요. 페이지 경로와 화면 배치가 [미정](verify-page.md#미정)이기 때문이에요. 정해지면 이 문서에 추가해요.
 
@@ -194,6 +194,7 @@ Phase 1에 포함하되 마지막에 구현해요(Notion 결정 F). 늦어지면
 | 뼈대 PR | `src/vnode.ts`의 타입과 상수, 공개 함수의 시그니처 | 모두 |
 | 최무헌 | `h` | 노도현(테스트), 박준호(테스트) |
 | 최무헌 | `createDOM`, `setProp`, `applyProps`, `toHTML` | 박준호(`src/patch.ts`) |
+| 모두 | [DOM 전역 규칙](virtual-dom.md#dom-전역-규칙) | 모두(테스트) |
 | 최무헌 | `readArea`, `fromHTML`, `sourceOf`, `mountArea` | 박준호(`src/app.ts`) |
 | 노도현 | `diff` | 박준호(`src/app.ts`) |
 

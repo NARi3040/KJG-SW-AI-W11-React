@@ -17,7 +17,6 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 |---|---|---|---|
 | `createTextVNode(text)` | `vnode.ts` | `text: string \| number` | 텍스트 VNode. `flags`는 `TEXT` |
 | `h(type, props, ...children)` | `vnode.ts` | 아래 설명 | VNode |
-| `toVNode(el, keepWs = false)` | `dom.ts` | `el: Element`, `keepWs`: 공백 텍스트 유지 여부 | 요소 VNode |
 | `readArea(parent)` | `dom.ts` | `parent: ParentNode`: 읽을 영역 | `div.vdom-root`로 감싼 VNode |
 | `fromHTML(html)` | `dom.ts` | `html: string`: HTML 소스 | `div.vdom-root`로 감싼 VNode |
 | `toHTML(v)` | `dom.ts` | `v: VNode` | 한 줄 HTML 문자열 |
@@ -25,6 +24,7 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 | `createDOM(v)` | `dom.ts` | `v: VNode`: 컴포넌트가 없는 VNode | 새 `Node`. 문서에 붙이지 않아요 |
 | `mountArea(container, vnode)` | `dom.ts` | `container: Element`, `vnode: VNode` | 없음. 영역을 비우고 새로 그려요 |
 | `setProp(el, key, next)` | `dom.ts` | `el: Element`, `key: string`, `next: PropValue` | 없음 |
+| `applyProps(el, props)` | `dom.ts` | `el: Element`, `props: Props` | 없음. `value` 외 속성을 먼저, `value`를 마지막에 `setProp`해요 |
 
 ## `h`
 
@@ -34,32 +34,34 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 
 처리 규칙이에요.
 
-1. 중첩 배열을 평탄화하고 `null`, `undefined`, `true`, `false`를 버려요. `cond && h(A)`와 `list.map(...)`을 쓰기 위해서예요.
+1. 중첩 배열을 평탄화하고 `null`, `undefined`, `true`, `false`를 버려요. `cond && h(A)`와 `list.map(...)`을 쓰기 위해서예요. 그다음 이웃한 문자열과 숫자를 하나로 합쳐요. 주석으로 나뉜 `<p>a<!--c-->b</p>`가 소스 `<p>ab</p>`를 다시 읽은 결과와 같아지게 하기 위해서예요.
 2. 남은 자식이 텍스트 하나면 `children`은 문자열이고 `TEXT_CHILDREN`이에요. 숫자는 문자열로 바꿔요.
 3. 남은 자식이 그 밖이면 `children`은 배열이고 `ARRAY_CHILDREN`이에요. 요소와 섞인 텍스트는 텍스트 VNode로 감싸요.
 4. 남은 자식이 없으면 `children`은 `null`이에요.
-5. `props`에서 `key`를 꺼내 최상위 필드로 옮겨요. `class`가 없으면 `className`을 `class`로 바꿔요. 남은 속성이 없으면 `props`는 `null`이에요.
+5. `props`에서 `key`를 꺼내 최상위 필드로 옮겨요. `null`과 `undefined`만 key 없음(`null`)이에요. `0`과 `""`도 key예요. `class`가 없으면 `className`을 `class`로 바꿔요. 남은 속성이 없으면 `props`는 `null`이에요.
 6. `type`이 문자열이면 `ELEMENT`, 함수면 `COMPONENT`를 `flags`에 합쳐요.
 
 | 호출 | 결과 |
 |---|---|
 | `h("li", null, "하나")` | `{ type: "li", props: null, key: null, children: "하나", flags: 9 }` |
+| `h("p", null, "a", 1)` | `children`은 `"a1"`, `flags: 9` |
 | `h("p", null, "a", h("b"))` | `children`은 텍스트 VNode와 `b` VNode의 배열, `flags: 17` |
 | `h("li", { key: "a", className: "x" })` | `{ type: "li", props: { class: "x" }, key: "a", children: null, flags: 1 }` |
 | `h("ul", null, false, null, [h("li"), [h("li")]])` | `children`은 `li` 2개의 배열 |
 
 ## DOM → VNode
 
-`toVNode`, `readArea`, `fromHTML`은 아래 규칙으로 읽어요.
+아래는 `readArea`와 `fromHTML`이 공통으로 따르는 읽기 규칙이에요. 둘 다 내부 함수 `readChildren`, `readProps`를 거쳐 읽어요. 요소 하나를 읽는 `toVNode`는 `readChildren`에서만 불리는 내부 함수라서, 모든 요소가 아래 규칙으로 걸러져요.
 
 | 대상 | 처리 | 이유 |
 |---|---|---|
-| 공백뿐인 텍스트 노드 | 버려요. `pre`, `textarea` 안에서는 유지해요 | 줄바꿈과 들여쓰기가 자식 인덱스를 어긋나게 해요 |
+| 공백뿐인 텍스트 노드 | 버려요. `pre`, `textarea` 안에서는 유지해요. 공백은 HTML 공백(스페이스, 탭, LF, FF, CR)만이에요 | 줄바꿈과 들여쓰기가 자식 인덱스를 어긋나게 해요. `trim()`이나 `\s`는 U+00A0(`&nbsp;`)도 공백으로 봐서 `<td>&nbsp;</td>`의 내용이 사라져요 |
 | 내용이 있는 텍스트 | 다듬지 않고 그대로 둬요 | 앞뒤 공백도 화면에 보이는 내용이에요 |
 | 주석 등 요소·텍스트가 아닌 노드 | 버려요 | VNode로 표현하지 않아요 |
 | `script` 요소 | 버려요 | 테스트 영역에 적은 코드가 Patch 순간 실행되는 것을 막아요 |
 | 이름이 `on`으로 시작하는 속성 | 버려요 | 값이 실행될 코드예요. `on*`은 함수만 받아요 |
-| `data-key` 속성 | `key`로 쓰고 `props`에도 남겨요 | 왕복해도 key가 사라지지 않아요 |
+| `data-key` 속성 | `key`로 쓰고 `props`에도 남겨요. key는 `data-key`에서만 가져와요 | 왕복해도 key가 사라지지 않아요 |
+| `key` 속성 | 버려요 | `sourceOf`는 `data-key`만 써요. `key` 속성을 key로 쓰면 변경 없이 다시 Patch해도 `REMOVE`, `CREATE`가 나와요 |
 | 그 밖의 속성 | 문자열 그대로 `props`에 넣어요 | 불리언 속성(`checked`)의 값은 빈 문자열이에요 |
 
 `fromHTML`은 `template` 요소의 `innerHTML`로 파싱해요. `template` 안의 내용은 스크립트 실행이나 이미지 로딩이 일어나지 않아서 안전하게 읽을 수 있어요.
@@ -81,9 +83,10 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 - 값이 `true`나 빈 문자열인 속성은 이름만 써요. (예: `<input checked>`)
 - 속성 값과 텍스트의 `&`, `<`, `>`, `"`를 이스케이프해요.
 - `style`, `xmp`, `iframe`, `noembed`, `noframes`의 내용은 이스케이프하지 않아요. 파서가 이 내용의 문자 참조를 풀지 않아서, 이스케이프하면 Patch할 때마다 내용이 바뀌어요.
+- `pre`, `textarea`의 내용이 `\n`으로 시작하면 여는 태그 뒤에 `\n`을 하나 더 써요. 파서가 여는 태그 바로 뒤의 줄바꿈 하나를 버리기 때문이에요.
 - `area`, `base`, `br`, `col`, `embed`, `hr`, `img`, `input`, `link`, `meta`, `source`, `track`, `wbr`은 닫는 태그를 쓰지 않아요.
 
-`sourceOf`는 루트 안쪽만 만들어요. 자식이 모두 요소일 때만 두 칸씩 들여써 줄을 바꾸고, 텍스트가 섞이거나 `pre`, `textarea`면 한 줄로 둬요. 요소 사이에 넣은 공백은 다시 읽을 때 버려지므로 내용이 바뀌지 않아요.
+`sourceOf`는 루트 안쪽만 만들어요. 자식이 모두 요소일 때만 두 칸씩 들여써 줄을 바꾸고, 텍스트가 섞이면 한 줄로 둬요. `pre`, `textarea`를 만나면 그 서브트리 전체를 `toHTML` 한 줄로 써요. 안쪽 요소를 들여쓰면 그 공백이 `pre` 안이라 텍스트로 남아 자식이 늘어나요. 요소 사이에 넣은 공백은 다시 읽을 때 버려지므로 내용이 바뀌지 않아요.
 
 ```text
 fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
@@ -136,22 +139,36 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 | 입력 | 결과 |
 |---|---|
 | 빈 영역, 빈 문자열 | `children`이 `null`인 루트 |
-| `<p>a<!--c-->b</p>` | 텍스트 VNode 2개. 주석은 버려져요 |
+| `<p>a<!--c-->b</p>` | `children`은 `"ab"`. 주석은 버려지고 이웃한 텍스트는 합쳐져요 |
 | `<p><b>a</b> <i>b</i></p>` | **요소 사이 공백이 사라져요.** 공백뿐인 텍스트로 보기 때문이에요. 띄어쓰기가 필요하면 텍스트에 붙여 써요 |
-| `<div key="a">` | `key` 속성은 `h`가 `key`로 가져가 DOM에 남지 않아요. 저장은 `data-key`로 해요 |
+| `<div key="a">` | `key` 속성은 읽을 때 버려요. key는 `null`이에요. key를 남기려면 `data-key`로 써요 |
+| `<li data-key="y" key="x">` | key는 `"y"`예요 |
+| `<li data-key="">`, `h("li", { key: 0 })` | key는 `""`, `0`이에요. key 없음이 아니에요 |
 | `<template><p>x</p></template>` | 내용을 읽지 않아요. 내용은 `childNodes`가 아니라 `content`에 있어요 |
-| `<pre>\n\nabc</pre>` | 왕복하면 맨 앞 줄바꿈이 하나 줄어요. 파서가 `pre` 첫 줄바꿈을 버리기 때문이에요 |
+| `<pre>\n\nabc</pre>`, `<textarea>\n\n</textarea>` | 처음 읽을 때 파서가 맨 앞 줄바꿈 하나를 버려 내용은 `"\nabc"`, `"\n"`이에요. 그 뒤로는 `toHTML`이 줄바꿈을 하나 더 써서 왕복해도 그대로예요 |
 | `<svg>` | 미지원. HTML 요소로 만들어져 그림이 그려지지 않아요. 네임스페이스가 필요해요 |
 | `iframe srcdoc`, `href="javascript:..."` | 막지 않아요. 입력하는 사람이 사용자 자신이라 범위 밖이에요 |
 | `h("script", ...)` | 막지 않아요. 개발자가 쓴 코드예요 |
 
 ## 테스트
 
-`src/dom.test.ts`에서 `node:test`와 `jsdom`으로 확인해요. 모듈이 전역 `document`를 쓰므로 테스트 파일 안에서 `globalThis.document`를 설정해요. 설정 코드를 별도 파일로 빼면 `tsconfig.build.json`의 제외 대상(`src/**/*.test.ts`)에서 벗어나 빌드에 들어가요.
+`src/dom.test.ts`에서 `node:test`와 `jsdom`으로 확인해요.
 
-- `h` 정규화: 위 표의 네 호출.
-- 읽기: 위 입력·출력 표, 공백 제거, `pre` 유지, `data-key`.
+### DOM 전역 규칙
+
+`src/dom.ts`, `src/patch.ts`, `src/app.ts`가 모두 따라요. Node 26.13.0에는 `document`뿐 아니라 `Node`, `HTMLInputElement`, `MutationObserver`도 없어요. 테스트는 `globalThis.document`만 설정하므로, 다른 전역을 쓰면 `ReferenceError`가 나요.
+
+- DOM 전역은 함수 안에서만 써요. `fromHTML`용 `template`을 모듈 최상위에 만들면, 정적 import가 테스트 본문보다 먼저 평가돼서 `document is not defined`가 나요.
+- `document` 외 전역은 쓰지 않아요. 노드 종류는 `nodeType` 숫자(요소 1, 텍스트 3)로, 요소 종류는 `tagName`으로 판단해요. `instanceof HTMLInputElement`를 쓰지 않아요.
+- 그 밖의 DOM 생성자는 `node.ownerDocument.defaultView`에서 꺼내요. (예: `countMutations`의 `MutationObserver`)
+- 테스트 파일마다 안에서 `globalThis.document`를 설정해요. 설정 코드를 별도 파일로 빼면 `tsconfig.build.json`의 제외 대상(`src/**/*.test.ts`)에서 벗어나 빌드에 들어가요.
+
+### 검사
+
+- `h` 정규화: 위 표의 호출 전부.
+- 읽기: 위 입력·출력 표, 공백 제거, `pre` 유지, `&nbsp;` 유지, `data-key`, `key` 속성 버림, 거짓 값 key.
 - 왕복: [무작위 입력](#무작위-입력)에서 `fromHTML(sourceOf(v))`가 `v`와 같은지.
+- 소스 왕복: `fromHTML(sourceOf(fromHTML(x)))`가 `fromHTML(x)`와 같은지. `x`는 `<p>a<!--c-->b</p>`, `<pre>\n\nabc</pre>`, `<textarea>\n\n</textarea>`, `<pre><div><b>x</b><i>y</i></div></pre>`, `<ul><li key="x">a</li></ul>`, `<li data-key="y" key="x">a</li>`예요. 무작위 입력은 규칙대로 만든 입력만 써서 이런 경우를 잡지 못해요.
 - 다양한 태그: 아래 [HTML](#다양한-태그)로 왕복과 자가 검사를 해요.
 - `createDOM`: `select`의 `value`, `range`의 `min`/`max`/`value`, 읽어 온 `checked`.
 - `setProp`: 빈 `class` 없음, 문자열과 함수 `on*`이 모두 붙지 않음, `output`의 자식과 `li`의 `value`가 그대로임, `progress`에 잘못된 값을 넣어도 예외가 없음.
@@ -203,11 +220,6 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 | 항목 | 규칙 | 이유 |
 |---|---|---|
 | 태그 | `div`, `span`, `section`, `ul`, `b`, `i`, `em`, `br` | `p`, `li`는 파서가 잘못된 중첩을 고쳐 읽어요 |
-| 크기 | 최상위 0–3개, 요소마다 자식 0–3개, 깊이는 5층까지 | 2026-11-07 측정에서 왕복, 쌍 비교, key 목록을 합쳐 약 6초가 걸렸어요 |
+| 크기 | 최상위 0–3개, 요소마다 자식 0–3개, 깊이는 5층까지. `br`은 자식 0개 | 2026-11-07 측정에서 왕복, 쌍 비교, key 목록을 합쳐 약 6초가 걸렸어요. `<br>x`는 다시 읽으면 `br`과 `x`가 형제가 돼요 |
 | 속성 | `id`, `class`, `data-x`만. 값은 영문자와 숫자 | `key`는 DOM에 남지 않고, `style`은 브라우저가 고쳐 써요 |
-| 텍스트 | 영문자와 숫자만. 텍스트를 연달아 넣지 않고 주석도 넣지 않아요 | `<p>a<!--c-->b</p>`는 텍스트 2개지만 소스는 `<p>ab</p>`라 다시 읽으면 1개예요 |
-
-## 실제 React와 다른 점
-
-- React 앱은 보통 JSX에서 요소를 만들고, DOM을 읽어 만들지 않아요. DOM 읽기는 이 과제의 Phase 1 요구사항이에요.
-- 속성 이름이 달라요. React는 `className`을 쓰고, 이 구현은 HTML 이름 `class`를 써요. `h`는 `className`을 받으면 `class`로 바꿔요.
+| 텍스트 | 영문자와 숫자만. 주석은 넣지 않아요 | 주석, `pre`, `textarea`는 [소스 왕복](#검사)에서 따로 확인해요 |

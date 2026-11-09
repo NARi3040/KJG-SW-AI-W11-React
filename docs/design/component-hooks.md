@@ -112,12 +112,3 @@ expand(h("ul", null, h(Item, { key: "a", label: "x" })));
 |---|---|
 | `update()` 중 예외 처리 | Notion 문서에 정의가 없어요. 렌더나 `applyPatches`에서 예외가 나면 `tree`와 DOM이 어긋날 수 있어요. Phase 1은 복구하기로 정했지만([verify-page.md](verify-page.md#patch-실패)) Phase 2에 그대로 쓸지는 아직 정하지 않았어요 |
 | 테스트 페이지 주제 | #10에서 정해요 |
-
-## 실제 React와 다른 점
-
-- **자식 상태:** React는 어느 컴포넌트에서나 Hook을 쓸 수 있어요. 이 구현은 과제 제약대로 루트에서만 쓰고, 자식에서 부르면 오류예요.
-- **컴포넌트 비교:** React는 컴포넌트 타입이 다르면 서브트리를 교체해요. 이 구현은 펼친 결과만 비교해요.
-- **`useEffect` 시점:** React는 화면을 그린 뒤 비동기로 실행해요. 이 구현은 DOM 반영 직후 동기로 실행해서 `useLayoutEffect`에 가까워요.
-- **`setState` 함수:** React는 렌더 사이에 같은 함수를 유지해요. 이 구현은 렌더마다 새 함수를 만들어요.
-- **Batching:** 이 구현은 microtask로 묶어요. Vue 3의 갱신 큐와 같은 방식이고, React의 스케줄러와는 달라요.
-- **미지원:** Fragment, Portal, ref, 서버 렌더링, 동시성 렌더링, `null` 반환.

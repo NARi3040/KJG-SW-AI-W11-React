@@ -4,7 +4,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 상태 | **팀 합의 완료** (2026-11-07 박준호 확인). 합의한 것은 Notion 문서 0장의 결정 A–H예요. 결정 C의 JS와 Vitest는 저장소 규칙대로 TS와 `node:test`로 바꿔요. 아래 [달라진 점](#notion-문서와-달라진-점)은 Notion에 없는 내용이에요 |
+| 상태 | **팀 합의 완료** (2026-11-07 박준호 확인). 합의한 것은 Notion 문서 0장의 결정 A–H예요. 결정 C의 JS와 Vitest는 저장소 규칙대로 TS와 `node:test`로 바꿔요. Notion과 다른 곳은 아래 [달라진 점](#notion-문서와-달라진-점)에 있어요 |
 | 다루는 요구사항 | R1-1, R1-2, R1-6 |
 | 관련 이슈 | #13, #14 |
 | 원본 | [Notion 설계 문서: 경로 기반 패치 목록 VNode·Patch](https://app.notion.com/p/41188145c531811fbc6ad1c735fe709d) (JS 전체 코드와 후보 비교가 있어요) |
@@ -187,32 +187,20 @@ key 비교예요. 이전 `a b c d e f g`, 새것 `a b e c d h f g`이고 `ul`의
 ];
 ```
 
-## 실제 React와 다른 점
-
-- React는 Fiber에 변경 표시를 남기고 커밋 단계에서 반영해요. 이 구현은 데이터로 된 Patch 목록을 만들고, 대상을 경로로 찾아요.
-- React의 `props`에는 `children`이 들어가고 속성 이름은 `className`이에요. 이 구현은 `children`을 따로 두고 HTML 속성 이름 `class`를 써요.
-- `flags` 비트 방식은 React가 아니라 Vue 3의 `shapeFlag`에서 가져왔어요.
-
 ## Notion 문서와 달라진 점
 
-저장소 규칙과 검증 결과에 맞추느라 바꾼 곳이에요. 이 저장소에서는 아래 내용이 우선이에요.
+Notion 문서와 다르면 이 저장소의 문서가 우선이에요. 바뀐 규칙은 각 문서에 반영했으므로, Notion 코드를 옮길 때는 아래 항목을 해당 문서의 규칙대로 바꿔요.
 
-| 항목 | Notion | 이 문서들 | 이유 |
-|---|---|---|---|
-| 언어, 파일 | JS, `src/*.js` | TS, `src/*.ts` | 저장소 규칙 |
-| 테스트 | Vitest, `tests/` | `node:test`, `src/*.test.ts` | 저장소 규칙. 새 의존성을 추가하지 않아요 |
-| 문서 경로 | `docs/vnode-spec.md` | `docs/design/vnode-spec.md` | 저장소 구조 |
-| `<script>` | 막지 않음 | 읽을 때 버림 | Notion 코드로 실행해 보니 Patch 때 실행됐어요. 담당자 결정이에요 |
-| Patch 도중 예외 | 정의 없음 | 이전 상태로 복구하고 오류 표시 | 절반만 바뀐 DOM이 남아 이후 경로가 어긋났어요. 담당자 결정이에요 |
-| `style` 내용의 이스케이프 | `>`를 `&gt;`로 바꿈 | 바꾸지 않음 | Patch할 때마다 `&gt;`, `&amp;gt;`로 내용이 망가졌어요 |
-| 자가 검사 | 비교 방법 정의 없음 | 테스트에서 속성 순서를 무시하고 비교 | `value`를 마지막에 써서 문자열 비교는 실패해요 |
-| key 목록의 같은 key, 다른 `type` | 엣지 케이스 표에 `REPLACE` | `REMOVE` + `CREATE` | Notion 코드의 실제 출력에 맞췄어요. 코드는 그대로예요 |
-| 이벤트 맵 | `el._vei` | `WeakMap` | DOM 타입을 확장하지 않으려고요. 동작은 같아요 |
-| 함수 리스너(invoker) | 처음부터 구현 | Phase 2에서 구현 | Phase 1에는 함수 리스너를 쓰는 곳이 없어요 |
-| `value` 프로퍼티 대입 | 프로퍼티가 있는 모든 요소 | `input`, `select`, `textarea`만 | `<output value="x"><b>y</b></output>`의 자식이 사라져 경로가 어긋났어요 |
-| `toHTML`의 객체 속성 값 | `[object Object]`로 출력 | 쓰지 않음 | 객체 `style`이 잘못된 HTML이 됐어요 |
-| 컴포넌트 반환값 | 미지원(오류 내용 없음) | VNode가 아니면 오류 | 원인을 바로 알 수 있게 해요 |
+- 언어와 테스트: [AGENTS.md](../../AGENTS.md)의 규칙을 따라요
+- 읽기: `<script>`와 `key` 속성 버림, 공백 판단, 이웃한 텍스트 합치기 ([virtual-dom.md](virtual-dom.md))
+- 쓰기: `style` 내용 이스케이프 안 함, `pre`·`textarea` 맨 앞 줄바꿈, 객체 속성 값 생략, `value` 프로퍼티 대상, 이벤트 맵은 `WeakMap`, invoker는 Phase 2 ([virtual-dom.md](virtual-dom.md))
+- key 목록의 같은 key, 다른 `type`: `REMOVE` + `CREATE` ([diff.md](diff.md#엣지-케이스))
+- 자가 검사: 속성 순서를 무시하고 비교 ([patch.md](patch.md#테스트))
+- Patch 도중 예외: 이전 상태로 복구 ([verify-page.md](verify-page.md#patch-실패))
+- 컴포넌트 반환값: VNode가 아니면 오류 ([component-hooks.md](component-hooks.md#expand))
 
 ## 검증 범위
 
 2026-11-07에 Notion의 JS 코드에 위 수정을 반영해 Node 26.13.0 + jsdom 31.0.0에서 실행했어요. 시연 시나리오, 자식 비교 9가지, 각 문서의 주요 기대값, 무작위 테스트 세 종류(시드 1–5, 시드마다 2,000개)가 통과했어요. 문서의 모든 줄을 실행한 것은 아니에요. TS 구현은 아직 없어서 TS로 옮긴 코드는 실행하지 않았어요. 실제 브라우저에서도 실행하지 않았어요. 검사 스크립트는 저장소에 없어요.
+
+2026-11-09에 PR #26 리뷰를 반영해 추가한 규칙(이웃한 텍스트 합치기, `key` 속성 버림, 거짓 값 key, HTML 공백, `pre` 서브트리 한 줄, key 비교 4단계의 `REMOVE` 순서)은 참조 구현으로 다시 실행하지 않았어요. `pre`, `textarea` 맨 앞 줄바꿈을 하나 더 쓰는 방식만 jsdom에서 왕복을 확인했어요(`"\nabc"`, `"\n"` 등 8가지).
