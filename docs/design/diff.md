@@ -55,7 +55,7 @@ key가 없을 때 쓰는 기본 경로예요. DOM에서 읽은 VNode는 `data-ke
 
 한 부모 아래에 `REMOVE`와 `CREATE`가 함께 나오지 않아요.
 
-**한계**: 맨 앞 형제가 사라지면 뒤 형제가 한 칸씩 당겨져 다른 태그끼리 비교되고 전부 `REPLACE`돼요. 이 장면은 시연에 써요([verify-page.md](verify-page.md#시연-시나리오)).
+**한계**: 맨 앞 형제가 사라지면 뒤 형제가 한 칸씩 당겨져 다른 태그끼리 비교되고 공통 길이만큼 모두 `REPLACE`돼요. 남는 마지막 자리는 `REMOVE`예요. 이 장면은 시연에 써요([verify-page.md](verify-page.md#시연-시나리오)).
 
 ## key 비교
 

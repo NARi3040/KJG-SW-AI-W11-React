@@ -246,7 +246,7 @@ describe("diff: 위치 비교 (diffUnkeyed)", () => {
     ]);
   });
 
-  test("한계: 맨 앞 형제가 사라지면 뒤 형제가 당겨져 전부 REPLACE", () => {
+  test("한계: 맨 앞 형제가 사라지면 뒤 형제가 당겨져 모두 REPLACE되고 마지막 자리는 REMOVE", () => {
     const h2 = h("h2", null, "프로필");
     const p = h("p", null, "소개");
     const ul = h("ul", null, li("a"));

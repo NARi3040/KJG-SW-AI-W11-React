@@ -135,12 +135,14 @@ flowchart LR
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
 | `isSame(a: VNode, b: VNode): boolean` | 내부 | `type`과 `key`가 모두 같은지 비교해요 | 같은 태그에 다른 key면 `false` |
-| `hasKey(list: VNode[]): boolean` | 내부 | key가 하나라도 있는지 봐요. `key != null`로 판단해요 | `[]`면 `false`. key가 `0`이나 `""`인 노드가 있으면 `true` |
+| `hasKey(list: VNode[]): boolean` | 내부 | key가 하나라도 있는지 봐요. `key != null`로 판단해요 | 테스트는 단계 9에서 `diff` 결과로 해요. 이 단계에서는 `diffChildren`이 부르지 않아요. key가 `0`이나 `""`인 노드가 있으면 `true`, key가 모두 `null`이면 `false` |
 | `diffProps(oldP: Props \| null, newP: Props \| null): { set: Props; remove: string[] } \| null` | 내부 | 바뀐 속성과 지운 속성을 구해요 | 같으면 `null`. `null`, `{ a: "1" }` → `set: { a: "1" }`, `remove: []` |
 | `diffUnkeyed(c1: VNode[], c2: VNode[], path: Path, out: Patch[]): void` | 내부 | 같은 위치끼리 비교, 남는 쪽은 `REMOVE` 또는 `CREATE` | `REMOVE`는 뒤 인덱스부터 |
 | `diffChildren(o: VNode, n: VNode, path: Path, out: Patch[]): void` | 내부 | 9가지 조합으로 나눠요 | [조합 표](diff.md#자식-비교-9가지-조합) 아홉 칸 |
 | `diffNode(o: VNode, n: VNode, path: Path, out: Patch[]): void` | 내부 | 같은 객체 → 교체 → 텍스트 → 자식 → 속성 순서 | 자식 Patch가 `PROPS`보다 먼저 |
 | `diff(oldV: VNode, newV: VNode): Patch[]` | 공개 | 빈 배열을 만들어 `diffNode`를 불러요 | 변경 없으면 `[]`. [위치 비교 예시](vnode-spec.md#전체-예시)와 정확히 같음 |
+
+표 밖의 내부 보조 함수: `removeRange`(자식 구간을 뒤 인덱스부터 `REMOVE`), `createRange`(새 자식 구간을 오름차순으로 `CREATE`), `pushText`(`TEXT` 추가), `textOf`(VNode의 텍스트 꺼내기). `removeRange`와 `createRange`는 단계 9의 key 비교 3단계에서도 써요.
 
 ### key 비교 (단계 9)
 
