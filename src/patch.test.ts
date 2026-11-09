@@ -14,10 +14,13 @@ function createEmptyArea(): HTMLElement {
 
 function createAreaFromHTML(html: string): HTMLElement {
   const dom = new JSDOM(
-    `<!doctype html><html><body><div id="area">${html}</div></body></html>`,
+    `<!doctype html><html><body><div id="area"></div></body></html>`,
   );
-  const area = dom.window.document.getElementById("area");
+  globalThis.document = dom.window.document;
+
+  const area = document.getElementById("area");
   assert.ok(area);
+  area.innerHTML = html;
   return area;
 }
 
@@ -133,28 +136,41 @@ test("applyPatches: TEXT는 요소와 텍스트 노드 모두에 적용해요", 
   );
 });
 
+test("applyPatches: 텍스트만 바뀌어도 요소 노드는 같은 객체예요", () => {
+  const area = createArea("<p>a</p>");
+  const paragraph = area.querySelector("p");
+  assert.ok(paragraph);
+
+  applyPatches(area, [{ type: "TEXT", path: [0], value: "b" }]);
+
+  assert.equal(area.querySelector("p"), paragraph);
+});
+
 test("applyPatches: 독립 텍스트 노드에도 TEXT를 적용해요", () => {
   const area = createArea("a");
+  const text = area.firstElementChild?.firstChild;
+  assert.ok(text);
 
   applyPatches(area, [{ type: "TEXT", path: [0], value: "b" }]);
 
   assert.equal(area.textContent, "b");
+  assert.equal(area.firstElementChild?.firstChild, text);
 });
 
 test("applyPatches: textarea의 TEXT는 textContent와 value에 모두 반영해요", () => {
   const area = createArea("<textarea>메모</textarea>");
   const textarea = area.querySelector("textarea");
-  assert.ok(
-    textarea instanceof area.ownerDocument.defaultView!.HTMLTextAreaElement,
-  );
-  textarea.value = "메모안녕";
+  assert.ok(textarea);
+  assert.equal(textarea.tagName, "TEXTAREA");
+  const field = textarea as HTMLTextAreaElement;
+  field.value = "메모안녕";
 
   const { mutations } = countMutations(area, () => {
     applyPatches(area, [{ type: "TEXT", path: [0], value: "할 일" }]);
   });
 
-  assert.equal(textarea.value, "할 일");
-  assert.equal(textarea.textContent, "할 일");
+  assert.equal(field.value, "할 일");
+  assert.equal(field.textContent, "할 일");
   assert.equal(mutations, 1);
 });
 
