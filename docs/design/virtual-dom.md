@@ -24,7 +24,7 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 | `toHTML(v)` | `dom.ts` | `v: VNode` | 한 줄 HTML 문자열 |
 | `sourceOf(root)` | `dom.ts` | `root: VNode`: `div.vdom-root` VNode | 루트 안쪽의 들여쓴 HTML 문자열 |
 | `createDOM(v)` | `dom.ts` | `v: VNode`: 컴포넌트가 없는 VNode | 새 `Node`. 문서에 붙이지 않아요 |
-| `mountArea(container, vnode)` | `dom.ts` | `container: Element`, `vnode: VNode` | 없음. 영역을 비우고 새로 그려요 |
+| `mountArea(container, vnode)` | `dom.ts` | `container: Element`, `vnode: VNode` | 없음. 새로 그린 뒤 영역의 내용을 바꿔요 |
 | `setProp(el, key, next)` | `dom.ts` | `el: Element`, `key: string`, `next: PropValue` | 없음 |
 | `applyProps(el, props)` | `dom.ts` | `el: Element`, `props: Props` | 없음. `value` 외 속성을 먼저, `value`를 마지막에 `setProp`해요 |
 
@@ -63,6 +63,7 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 | 주석 등 요소·텍스트가 아닌 노드 | 버려요 | VNode로 표현하지 않아요 |
 | `script` 요소 | 버려요 | 테스트 영역에 적은 코드가 Patch 순간 실행되는 것을 막아요 |
 | 이름이 `on`으로 시작하는 속성 | 버려요 | 값이 실행될 코드예요. `on*`은 함수만 받아요 |
+| 이름이 `=`로 시작하는 속성 | 버려요 | 파서는 `<p =x>`의 `=x`를 속성 이름으로 받지만 `setAttribute`는 `InvalidCharacterError`를 던져요(jsdom 31, Chrome 157에서 확인). 남기면 그릴 수 없는 VNode가 생겨요 |
 | `data-key` 속성 | `key`로 쓰고 `props`에도 남겨요. key는 `data-key`에서만 가져와요 | 왕복해도 key가 사라지지 않아요 |
 | `key` 속성 | 버려요 | `sourceOf`는 `data-key`만 써요. `key` 속성을 key로 쓰면 변경 없이 다시 Patch해도 `REMOVE`, `CREATE`가 나와요 |
 | 그 밖의 속성 | 문자열 그대로 `props`에 넣어요 | 불리언 속성(`checked`)의 값은 빈 문자열이에요 |
@@ -122,7 +123,7 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 
 서브트리를 문서 밖에서 다 만든 뒤 호출하는 쪽이 한 번에 넣어요.
 
-`mountArea`는 영역의 `textContent`를 비우고 `createDOM(vnode)`를 붙여요. 첫 렌더와 실패 복구에만 써요.
+`mountArea`는 `createDOM(vnode)`를 먼저 만든 뒤 `replaceChildren`으로 영역의 내용을 바꿔요. 먼저 비우면 생성이 실패했을 때 빈 영역만 남기 때문이에요. 첫 렌더와 실패 복구에만 써요.
 
 ## `setProp`
 
@@ -140,7 +141,7 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 | `key`와 조건 | 처리 | 이유 |
 |---|---|---|
 | `checked`, `selected` (`el`에 그 프로퍼티가 있을 때) | 프로퍼티에 `!off`를 대입 | 사용자가 바꾼 뒤에는 프로퍼티가 현재 상태예요. 읽어 온 값 `""`도 켜짐이에요 |
-| `value` (`el`이 `input`, `select`, `textarea`일 때) | 프로퍼티에 대입, `off`면 빈 문자열 | 이 요소들의 현재값은 프로퍼티예요. 다른 요소에는 대입하지 않아요. `output`은 자식이 지워져 경로가 어긋나고, `li`는 값이 `0`으로 바뀌고, `progress`는 예외가 나요 |
+| `value` (`el`이 `input`, `select`, `textarea`일 때) | 프로퍼티에 대입, `off`면 빈 문자열. `type`이 `file`인 `input`에는 대입하지 않아요 | 이 요소들의 현재값은 프로퍼티예요. 다른 요소에는 대입하지 않아요. `output`은 자식이 지워져 경로가 어긋나고, `li`는 값이 `0`으로 바뀌고, `progress`는 예외가 나요. 파일 입력의 `value` 프로퍼티는 빈 문자열만 받아 `InvalidStateError`가 나요. 속성은 그대로 남아요 |
 
 **invoker 규칙** (Phase 2에서 구현해요. Phase 1에는 함수 리스너를 쓰는 곳이 없어요): 이벤트 이름은 `key.slice(2).toLowerCase()`예요. 요소마다 "이벤트 이름 → invoker" 맵을 `WeakMap<Element, Record<string, Invoker>>`에 둬요. invoker는 현재 함수(`fn`)를 호출하는 리스너예요. 처음 한 번만 `addEventListener`하고, 이후에는 `fn`만 바꿔요. 값이 함수가 아니면 있던 리스너를 떼요. 렌더마다 새로 생기는 화살표 함수 때문에 매번 붙였다 떼지 않기 위해서예요.
 
@@ -179,11 +180,12 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 ### 검사
 
 - `h` 정규화: 위 표의 호출 전부.
-- 읽기: 위 입력·출력 표, 공백 규칙과 합치는 순서(위 두 표), `pre` 유지, `&nbsp;` 유지, `data-key`, `key` 속성 버림, 거짓 값 key.
+- 읽기: 위 입력·출력 표, 공백 규칙과 합치는 순서(위 두 표), `pre` 유지, `&nbsp;` 유지, `data-key`, `key` 속성 버림, `=`로 시작하는 속성 버림, 거짓 값 key.
 - 왕복: [무작위 입력](#무작위-입력)에서 `fromHTML(sourceOf(v))`가 `v`와 같은지.
 - 소스 왕복: `fromHTML(sourceOf(fromHTML(x)))`가 `fromHTML(x)`와 같은지. `x`는 `<p>a<!--c-->b</p>`, `<pre>\n\nabc</pre>`, `<textarea>\n\n</textarea>`, `<pre><div><b>x</b><i>y</i></div></pre>`, `<ul><li key="x">a</li></ul>`, `<li data-key="y" key="x">a</li>`, `<p><b>a</b> <i>b</i></p>`, `<p><b>a</b>\n<i>b</i></p>`, `<p>a<!--x-->\n<b>b</b></p>`, `<p>\n<!--x--> <b>b</b></p>`, `<li> <b>x</b></li>`, `<ul>\n  <li>a</li>\n  <li>b</li>\n</ul>`예요. 무작위 입력은 규칙대로 만든 입력만 써서 이런 경우를 잡지 못해요.
 - 다양한 태그: 아래 [HTML](#다양한-태그)로 왕복과 자가 검사를 해요.
-- `createDOM`: `select`의 `value`, `range`의 `min`/`max`/`value`, 읽어 온 `checked`.
+- `createDOM`: `select`의 `value`, `range`의 `min`/`max`/`value`, 읽어 온 `checked`, `value`가 있는 파일 입력.
+- `mountArea`: 생성이 실패하면 기존 내용이 그대로임.
 - `setProp`: 빈 `class` 없음, 문자열과 함수 `on*`이 모두 붙지 않음, 일반 속성을 문자열에서 객체 값으로 바꾸면 기존 속성 제거, 객체 값이면 `checked`·`selected`에 `false`를 대입하고 폼의 `value`에 빈 문자열 대입, `output`의 자식과 `li`의 `value`가 그대로임, `progress`에 잘못된 값을 넣어도 예외가 없음.
 - Phase 2에서 추가: 핸들러를 교체해도 `addEventListener`는 1회, 새 핸들러 호출, 제거 시 해제.
 

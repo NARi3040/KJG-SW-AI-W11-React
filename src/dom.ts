@@ -28,7 +28,11 @@ const voidTags = new Set([
 function readProps(el: Element): Props | null {
   const props: Props = Object.fromEntries(
     Array.from(el.attributes)
-      .filter(({ name }) => name !== "key" && !name.startsWith("on"))
+      // "="로 시작하는 이름은 파서가 허용해도 setAttribute가 거부해요
+      .filter(
+        ({ name }) =>
+          name !== "key" && !name.startsWith("on") && !name.startsWith("="),
+      )
       .map(({ name, value }) => [name, value]),
   );
   if (Object.hasOwn(props, "data-key")) props.key = props["data-key"];
@@ -183,7 +187,9 @@ export function setProp(el: Element, key: string, next: PropValue): void {
     key === "value" &&
     (el.tagName === "INPUT" ||
       el.tagName === "SELECT" ||
-      el.tagName === "TEXTAREA")
+      el.tagName === "TEXTAREA") &&
+    // 파일 입력의 value 프로퍼티는 빈 문자열만 받아 예외가 나요
+    (el as HTMLInputElement).type !== "file"
   ) {
     (el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value =
       off ? "" : String(next);
@@ -214,6 +220,6 @@ export function createDOM(v: VNode): Node {
 }
 
 export function mountArea(container: Element, vnode: VNode): void {
-  container.textContent = "";
-  container.appendChild(createDOM(vnode));
+  // 먼저 만들고 바꿔야 생성이 실패해도 기존 영역이 남아요
+  container.replaceChildren(createDOM(vnode));
 }

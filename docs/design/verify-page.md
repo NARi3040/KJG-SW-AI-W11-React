@@ -58,6 +58,7 @@ R1-4의 "테스트 영역을 그려요"는 textarea에 HTML 소스를 보여 주
 
 Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이후 경로가 어긋나요. 그래서 `onPatch`와 `go`는 이렇게 처리해요.
 
+0. `onPatch`는 적용 전에 `createDOM(새 VNode)`로 그릴 수 있는지 확인해요. 실패하면 실제 영역을 건드리지 않고 예외를 그대로 던져요. 그래서 `history`의 모든 스냅샷은 2번 복구에서 다시 그릴 수 있어요. 확인한 범위에서는 파서가 받아들인 HTML이 모두 그려지지만([patch.md](patch.md#예외)), 확인하지 않은 브라우저를 위해 남겨요.
 1. `applyPatches`를 `try`로 감싸요.
 2. 예외가 나면 `mountArea(real, 현재 VNode)`로 실제 영역을 복구하고 같은 예외를 다시 던져요.
 3. `history`는 바꾸지 않아요. `editor.value`도 바꾸지 않아 사용자가 입력을 고칠 수 있어요.
@@ -66,8 +67,10 @@ Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이�
 복구는 전체를 새로 그리므로 사용자가 실제 영역에서 바꾼 폼 상태는 VNode 값으로 돌아가요.
 
 ```text
-입력: <p>A</p><input type="file" value="a">
-결과: InvalidStateError 전달, 실제 영역과 history는 Patch 전과 같음, textarea는 입력 그대로
+상태: 실제 영역의 select가 텍스트 노드로 바뀌어 VNode와 어긋남
+입력: h2를 "나리 프로필"로, select의 name을 "t"로 바꾼 소스
+결과: h2 TEXT가 적용된 뒤 PROPS에서 "PROPS 대상이 요소가 아니에요" 전달,
+      실제 영역은 복구되어 history의 현재 VNode와 같음, history는 그대로, textarea는 입력 그대로
 ```
 
 ## 샘플 HTML

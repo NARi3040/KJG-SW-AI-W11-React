@@ -330,6 +330,41 @@ test("mountArea: 기존 내용을 비우고 루트 하나만 붙여요", () => {
   assert.equal(area.firstChild?.childNodes.length, 0);
 });
 
+test("mountArea: 생성이 실패하면 기존 내용을 그대로 둬요", () => {
+  const area = document.createElement("main");
+  area.innerHTML = "<p>이전 요소</p>";
+  const component = h(() => h("p", null), null);
+  assert.throws(
+    () => mountArea(area, h("div", { class: "vdom-root" }, component)),
+    /expand/,
+  );
+  assert.equal(area.innerHTML, "<p>이전 요소</p>");
+});
+
+test("파일 입력: value 속성만 남기고 프로퍼티에는 대입하지 않아요", () => {
+  const el = createDOM(
+    h("input", { type: "file", value: "a" }),
+  ) as HTMLInputElement;
+  assert.equal(el.getAttribute("value"), "a");
+  assert.equal(el.value, "");
+  setProp(el, "value", "b");
+  assert.equal(el.getAttribute("value"), "b");
+});
+
+test("fromHTML: =로 시작하는 속성 이름은 버려요", () => {
+  const v = fromHTML(`<p =x="1" title="t">y</p><p /=1 =>z</p>`);
+  assert.deepEqual(
+    v,
+    h(
+      "div",
+      { class: "vdom-root" },
+      h("p", { title: "t" }, "y"),
+      h("p", null, "z"),
+    ),
+  );
+  assert.doesNotThrow(() => createDOM(v));
+});
+
 test("createDOM: 설계 문서의 다양한 태그를 그리고 폼 값과 자식을 보존해요", () => {
   const vnode = h(
     "section",
