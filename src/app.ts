@@ -1,5 +1,5 @@
 import { diff } from "./diff.ts";
-import { fromHTML, mountArea, readArea, sourceOf } from "./dom.ts";
+import { createDOM, fromHTML, mountArea, readArea, sourceOf } from "./dom.ts";
 import { applyPatches } from "./patch.ts";
 import type { Patch, VNode } from "./vnode.ts";
 
@@ -21,6 +21,7 @@ export function load(real: Element, editor: Editor): void {
 export function onPatch(real: Element, editor: Editor): Patch[] {
   const cur = currentVNode();
   const next = fromHTML(editor.value);
+  createDOM(next); // 다시 그릴 수 없는 VNode는 history에 넣지 않아요
   const patches = diff(cur, next);
 
   applyOrRestore(real, cur, patches);

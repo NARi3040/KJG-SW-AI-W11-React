@@ -58,12 +58,15 @@ R1-4의 "테스트 영역을 그려요"는 textarea에 HTML 소스를 보여 주
 
 Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이후 경로가 어긋나요. 그래서 `onPatch`와 `go`는 이렇게 처리해요.
 
+0. `onPatch`는 적용 전에 `createDOM(새 VNode)`로 그릴 수 있는지 확인해요. 실패하면 실제 영역을 건드리지 않고 예외를 그대로 던져요. 그래서 `history`의 모든 스냅샷은 2번 복구에서 다시 그릴 수 있어요.
 1. `applyPatches`를 `try`로 감싸요.
 2. 예외가 나면 `mountArea(real, 현재 VNode)`로 실제 영역을 복구하고 같은 예외를 다시 던져요.
 3. `history`는 바꾸지 않아요. `editor.value`도 바꾸지 않아 사용자가 입력을 고칠 수 있어요.
 4. 버튼 핸들러가 예외를 잡아 화면에 메시지를 보여 줘요.
 
 복구는 전체를 새로 그리므로 사용자가 실제 영역에서 바꾼 폼 상태는 VNode 값으로 돌아가요.
+
+`<input type="text" value="a">`를 `<input type="file" value="a">`로 바꾸면 `value`가 같아 `.value` 대입 없이 Patch가 성공해요. 0번 검사가 없으면 이 VNode가 `history`에 들어가고, 이후 복구의 `mountArea`가 같은 예외로 실패해 실제 영역이 비어요.
 
 ```text
 입력: <p>A</p><input type="file" value="a">

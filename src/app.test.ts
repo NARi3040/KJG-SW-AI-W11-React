@@ -224,6 +224,23 @@ test("실패 복구: 예외를 다시 던지고 history, 실제 영역, textarea
   assertAreaMatchesCurrent();
 });
 
+test("실패 복구: 다시 그릴 수 없는 VNode는 history에 넣지 않아요", () => {
+  real.innerHTML = `<input type="text" value="a">`;
+  load(real, editor);
+  const beforeStack = [...history.stack];
+
+  // type만 바뀌면 .value 대입이 없어 Patch는 성공하지만 이 VNode는 새로 그릴 수 없어요
+  editor.value = `<input type="file" value="a">`;
+  assert.throws(() => onPatch(real, editor), /InvalidStateError/);
+  assert.deepEqual(history.stack, beforeStack);
+  assertAreaMatchesCurrent();
+
+  editor.value = `<p>A</p><input type="file" value="a">`;
+  assert.throws(() => onPatch(real, editor), /InvalidStateError/);
+  assert.equal(history.stack.length, 1);
+  assertAreaMatchesCurrent();
+});
+
 test("잘못된 중첩: 파서가 고친 구조로 비교하고 textarea를 다시 채워요", () => {
   load(real, editor);
 
