@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { diff } from "./diff.ts";
-import { fromHTML, readArea } from "./dom.ts";
+import { fromHTML, mountArea, readArea } from "./dom.ts";
 import { applyPatches, formatPatches, resolve } from "./patch.ts";
 import { h } from "./vnode.ts";
-import type { Patch } from "./vnode.ts";
+import type { Patch, VNode } from "./vnode.ts";
 
 function createArea(html: string): HTMLElement {
   return createAreaFromHTML(`<div class="vdom-root">${html}</div>`);
@@ -479,3 +479,102 @@ test("formatPatches: node는 HTML로, 함수는 ƒ로 바꿔요", () => {
     '[{"type":"CREATE","parentPath":[],"index":0,"node":"<button>확인</button>"}]',
   );
 });
+
+// 시드를 줄 수 있는 mulberry32 난수예요. 실패를 같은 입력으로 다시 볼 수 있어요
+function mulberry32(seed: number): () => number {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let value = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function deepFreeze(v: VNode): VNode {
+  if (v.props) Object.freeze(v.props);
+  if (Array.isArray(v.children)) {
+    for (const child of v.children) deepFreeze(child);
+    Object.freeze(v.children);
+  }
+  return Object.freeze(v);
+}
+
+function randomKeyList(random: () => number): VNode {
+  const pool = [..."abcdefghijklmnopqrst"];
+  const items = Array.from({ length: Math.floor(random() * 13) }, () => {
+    const key = pool.splice(Math.floor(random() * pool.length), 1)[0];
+    const tag = random() < 0.2 ? "p" : "li";
+    const props = random() < 0.2 ? null : { key };
+    return h(tag, props, `${key}${Math.floor(random() * 2)}`);
+  });
+  return deepFreeze(h("div", { class: "vdom-root" }, h("ul", null, ...items)));
+}
+
+function randomHTML(random: () => number): string {
+  const pick = <T>(list: T[]): T => list[Math.floor(random() * list.length)];
+  const text = (): string => Math.floor(random() * 0x1000000).toString(36);
+  const children = (depth: number): string =>
+    Array.from({ length: Math.floor(random() * 4) }, () =>
+      depth >= 5 || random() < 0.3 ? text() : element(depth + 1),
+    ).join("");
+  function element(depth: number): string {
+    const tag = pick(["div", "span", "section", "ul", "b", "i", "em", "br"]);
+    let attrs = "";
+    for (const name of ["id", "class", "data-x"]) {
+      if (random() < 0.3) attrs += ` ${name}="${text()}"`;
+    }
+    return tag === "br"
+      ? `<br${attrs}>`
+      : `<${tag}${attrs}>${children(depth)}</${tag}>`;
+  }
+  return children(0);
+}
+
+for (const seed of [1, 2, 3, 4, 5]) {
+  test(`무작위 key 목록: 시드 ${seed}의 2,000쌍이 새로 그린 것과 같아요`, () => {
+    const area = createEmptyArea();
+    const expected = document.createElement("div");
+    const random = mulberry32(seed);
+
+    for (let index = 0; index < 2000; index++) {
+      const oldV = randomKeyList(random);
+      const newV = randomKeyList(random);
+      mountArea(area, oldV);
+      mountArea(expected, newV);
+      const before = area.innerHTML;
+
+      applyPatches(area, diff(oldV, newV));
+
+      assert.equal(
+        area.innerHTML,
+        expected.innerHTML,
+        `seed=${seed}, index=${index}, old=${before}, new=${expected.innerHTML}`,
+      );
+    }
+  });
+}
+
+for (const seed of [1, 2, 3, 4, 5]) {
+  test(`무작위 HTML: 시드 ${seed}의 2,000쌍이 자가 검사를 통과해요`, () => {
+    const area = createEmptyArea();
+    const random = mulberry32(seed);
+
+    for (let index = 0; index < 2000; index++) {
+      const oldHTML = randomHTML(random);
+      const newHTML = randomHTML(random);
+      const oldV = deepFreeze(fromHTML(oldHTML));
+      const newV = deepFreeze(fromHTML(newHTML));
+      mountArea(area, oldV);
+
+      applyPatches(area, diff(oldV, newV));
+
+      const root = area.firstElementChild;
+      assert.ok(root);
+      assert.deepStrictEqual(
+        readArea(root),
+        newV,
+        `seed=${seed}, index=${index}, old=${oldHTML}, new=${newHTML}`,
+      );
+    }
+  });
+}

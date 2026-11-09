@@ -106,7 +106,7 @@ test("history: 로드, Patch, 뒤로·앞으로, 앞으로 기록 자르기", ()
   assert.equal(editor.value, value);
 });
 
-test("시연 시나리오 1–5단계: Patch와 DOM 변경 횟수", () => {
+test("시연 시나리오 1–7단계: Patch, DOM 변경 횟수, 처음 상태로 뒤로가기", () => {
   load(real, editor);
   const initial = history.stack[0];
 
@@ -148,6 +148,17 @@ test("시연 시나리오 1–5단계: Patch와 DOM 변경 횟수", () => {
       shapes: ["REPLACE [0,0,1]"],
       mutations: 1,
     },
+    {
+      edit: (source) =>
+        source
+          .replace('    <li data-key="patch">Patch</li>\n', "")
+          .replace(
+            '<ul class="todo">\n',
+            '<ul class="todo">\n    <li data-key="patch">Patch</li>\n',
+          ),
+      shapes: ["MOVE [0,1] 2->0"],
+      mutations: 2,
+    },
   ];
 
   for (const [index, step] of steps.entries()) {
@@ -162,10 +173,10 @@ test("시연 시나리오 1–5단계: Patch와 DOM 변경 횟수", () => {
     assertAreaMatchesCurrent();
   }
 
-  assert.equal(history.index, 5);
-  assert.equal(history.stack.length, 6);
+  assert.equal(history.index, 6);
+  assert.equal(history.stack.length, 7);
 
-  for (let expected = 4; expected >= 0; expected--) {
+  for (let expected = 5; expected >= 0; expected--) {
     const patches = go(real, editor, -1);
     assert.ok(patches, "뒤로가기는 null이 아니어야 해요");
     assert.equal(history.index, expected);
