@@ -162,7 +162,7 @@ function setStyle(el: Element, next: PropValue): void {
 export function setProp(el: Element, key: string, next: PropValue): void {
   if (key.toLowerCase().startsWith("on")) return;
 
-  const off = next === null || next === undefined || next === false;
+  let off = next === null || next === undefined || next === false;
   if (key === "class") {
     if (off) el.removeAttribute(key);
     else el.className = String(next);
@@ -173,11 +173,9 @@ export function setProp(el: Element, key: string, next: PropValue): void {
     else setStyle(el, next);
     return;
   }
+  off = off || typeof next === "object";
   if (off) el.removeAttribute(key);
-  else if (typeof next === "object") {
-    el.removeAttribute(key);
-    return;
-  } else el.setAttribute(key, next === true ? "" : String(next));
+  else el.setAttribute(key, next === true ? "" : String(next));
 
   if (key === "checked" && "checked" in el) el.checked = !off;
   if (key === "selected" && "selected" in el) el.selected = !off;

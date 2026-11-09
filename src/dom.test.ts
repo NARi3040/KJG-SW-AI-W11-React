@@ -155,6 +155,53 @@ test("setProp: checked와 selected는 빈 문자열도 켜짐이고 off면 꺼�
   assert.equal("selected" in div, false);
 });
 
+test("setProp: 객체 값이면 checked와 selected의 현재 상태도 꺼요", () => {
+  const next = Object.freeze({ x: "y" });
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  const select = document.createElement("select");
+  select.multiple = true;
+  const option = document.createElement("option");
+  select.appendChild(option);
+  for (const apply of [
+    (el: Element, key: string) => setProp(el, key, next),
+    (el: Element, key: string) => applyProps(el, { [key]: next }),
+  ]) {
+    setProp(checkbox, "checked", true);
+    checkbox.checked = true;
+    setProp(option, "selected", true);
+    option.selected = true;
+    apply(checkbox, "checked");
+    apply(option, "selected");
+    assert.equal(checkbox.hasAttribute("checked"), false);
+    assert.equal(checkbox.checked, false);
+    assert.equal(option.hasAttribute("selected"), false);
+    assert.equal(option.selected, false);
+  }
+});
+
+test("setProp: 객체 value는 input, select, textarea의 현재값도 비워요", () => {
+  const select = document.createElement("select");
+  select.innerHTML = '<option value="x">X</option><option value="y">Y</option>';
+  const next = Object.freeze({ x: "y" });
+  for (const field of [
+    document.createElement("input"),
+    select,
+    document.createElement("textarea"),
+  ]) {
+    setProp(field, "value", "y");
+    field.value = "x";
+    setProp(field, "value", next);
+    assert.equal(field.hasAttribute("value"), false);
+    assert.equal(field.value, "");
+    setProp(field, "value", "y");
+    field.value = "x";
+    applyProps(field, { value: next });
+    assert.equal(field.hasAttribute("value"), false);
+    assert.equal(field.value, "");
+  }
+});
+
 test("setProp: input, select, textarea의 현재 value도 바꿔요", () => {
   const select = document.createElement("select");
   select.innerHTML = '<option value="x">X</option><option value="y">Y</option>';
