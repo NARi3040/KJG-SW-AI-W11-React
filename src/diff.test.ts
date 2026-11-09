@@ -1,8 +1,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { diff } from "./diff.ts";
+import { diff, lis } from "./diff.ts";
 import { createTextVNode, h } from "./vnode.ts";
-import type { Child, Patch, Props, VNode } from "./vnode.ts";
+import type { Child, Key, Patch, Props, VNode } from "./vnode.ts";
 
 function deepFreeze(v: VNode): VNode {
   if (v.props) Object.freeze(v.props);
@@ -69,17 +69,18 @@ describe("diff: vnode-spec.md 위치 비교 예시", () => {
 });
 
 describe("diff: 노드 비교 (isSame, 교체)", () => {
+  // 목록 안에서는 key 비교로 가서 REMOVE + CREATE가 나와요. 루트끼리 비교해 isSame만 확인해요.
   test("같은 태그에 다른 key면 REPLACE", () => {
     const n = h("li", { key: "b" }, "a");
-    assert.deepEqual(diff(root(h("li", { key: "a" }, "a")), root(n)), [
-      { type: "REPLACE", path: [0], node: n },
+    assert.deepEqual(diff(h("li", { key: "a" }, "a"), n), [
+      { type: "REPLACE", path: [], node: n },
     ]);
   });
 
   test("key가 null과 0이면 다른 노드예요", () => {
     const n = h("li", { key: 0 }, "a");
-    assert.deepEqual(diff(root(h("li", null, "a")), root(n)), [
-      { type: "REPLACE", path: [0], node: n },
+    assert.deepEqual(diff(h("li", null, "a"), n), [
+      { type: "REPLACE", path: [], node: n },
     ]);
   });
 
@@ -256,6 +257,248 @@ describe("diff: 위치 비교 (diffUnkeyed)", () => {
       { type: "REPLACE", path: [1], node: ul },
       { type: "REMOVE", path: [2] },
     ]);
+  });
+});
+
+describe("diff: vnode-spec.md key 비교 예시", () => {
+  test("a b c d e f g → a b e c d h f g면 MOVE (4 → 2), CREATE (5)", () => {
+    const item = (k: string) => h("li", { key: k }, k);
+    const h5 = item("h");
+    const patches = diff(
+      root(h("ul", null, ..."abcdefg".split("").map(item))),
+      root(
+        h("ul", null, ..."abecd".split("").map(item), h5, item("f"), item("g")),
+      ),
+    );
+    assert.deepEqual(patches, [
+      { type: "MOVE", parentPath: [0], from: 4, to: 2 },
+      { type: "CREATE", parentPath: [0], index: 5, node: h5 },
+    ]);
+  });
+});
+
+describe("diff: key 비교 (diffKeyed)", () => {
+  const item = (k: Key, s: string = String(k)) => h("li", { key: k }, s);
+  const list = (...items: VNode[]) => root(h("ul", null, ...items));
+
+  test("시연 6단계: 맨 뒤 항목을 맨 앞으로 옮기면 MOVE 1개", () => {
+    assert.deepEqual(
+      diff(
+        list(item("a"), item("b"), item("c")),
+        list(item("c"), item("a"), item("b")),
+      ),
+      [{ type: "MOVE", parentPath: [0], from: 2, to: 0 }],
+    );
+  });
+
+  test("목록 안에서 같은 태그에 다른 key면 REMOVE + CREATE", () => {
+    const b = item("b", "a");
+    assert.deepEqual(diff(list(item("a")), list(b)), [
+      { type: "REMOVE", path: [0, 0] },
+      { type: "CREATE", parentPath: [0], index: 0, node: b },
+    ]);
+  });
+
+  test("목록 안에서 같은 key, 다른 type이면 짝을 맺지 않고 REMOVE + CREATE", () => {
+    const p = h("p", { key: "b" }, "b");
+    assert.deepEqual(diff(list(item("a"), item("b")), list(item("a"), p)), [
+      { type: "REMOVE", path: [0, 1] },
+      { type: "CREATE", parentPath: [0], index: 1, node: p },
+    ]);
+  });
+
+  test("1–2단계: 뒤 공통 구간의 안쪽 비교는 이전 인덱스로 경로를 붙여요", () => {
+    assert.deepEqual(
+      diff(
+        list(item("a"), item("b"), item("c")),
+        list(item("a"), item("c", "C")),
+      ),
+      [
+        { type: "TEXT", path: [0, 2], value: "C" },
+        { type: "REMOVE", path: [0, 1] },
+      ],
+    );
+  });
+
+  test("3단계: 이전이 바닥나면 남은 새것을 오름차순으로 CREATE", () => {
+    const x = item("x");
+    const y = item("y");
+    assert.deepEqual(
+      diff(list(item("a"), item("b")), list(item("a"), x, y, item("b"))),
+      [
+        { type: "CREATE", parentPath: [0], index: 1, node: x },
+        { type: "CREATE", parentPath: [0], index: 2, node: y },
+      ],
+    );
+  });
+
+  test("3단계: 새것이 바닥나면 남은 이전을 뒤 인덱스부터 REMOVE", () => {
+    assert.deepEqual(
+      diff(
+        list(item("a"), item("b"), item("c"), item("d")),
+        list(item("a"), item("d")),
+      ),
+      [
+        { type: "REMOVE", path: [0, 2] },
+        { type: "REMOVE", path: [0, 1] },
+      ],
+    );
+  });
+
+  test("4단계: 옮겨지는 노드의 안쪽 Patch는 옛 위치로 적고 MOVE보다 먼저 나와요", () => {
+    assert.deepEqual(
+      diff(
+        list(item("a"), item("b"), item("c")),
+        list(item("c", "C"), item("a"), item("b")),
+      ),
+      [
+        { type: "TEXT", path: [0, 2], value: "C" },
+        { type: "MOVE", parentPath: [0], from: 2, to: 0 },
+      ],
+    );
+  });
+
+  test("4단계: REMOVE는 이전 인덱스 오름차순, 배치는 새 인덱스 오름차순", () => {
+    const e = item("e");
+    assert.deepEqual(
+      diff(
+        list(item("a"), item("b"), item("c"), item("d")),
+        list(item("d"), item("c"), e),
+      ),
+      [
+        { type: "REMOVE", path: [0, 0] },
+        { type: "REMOVE", path: [0, 1] },
+        { type: "MOVE", parentPath: [0], from: 3, to: 0 },
+        { type: "CREATE", parentPath: [0], index: 2, node: e },
+      ],
+    );
+  });
+
+  test("4단계: 새 구간이 모두 짝을 찾으면 남은 이전 노드는 REMOVE", () => {
+    assert.deepEqual(
+      diff(list(item("a"), item("b"), item("c")), list(item("b"))),
+      [
+        { type: "REMOVE", path: [0, 0] },
+        { type: "REMOVE", path: [0, 2] },
+      ],
+    );
+  });
+
+  test("순서가 그대로면 MOVE 없이 CREATE만 내요", () => {
+    const x = item("x");
+    const y = item("y");
+    assert.deepEqual(
+      diff(list(item("a"), item("b"), item("c")), list(x, item("b"), y)),
+      [
+        { type: "REMOVE", path: [0, 0] },
+        { type: "REMOVE", path: [0, 2] },
+        { type: "CREATE", parentPath: [0], index: 0, node: x },
+        { type: "CREATE", parentPath: [0], index: 2, node: y },
+      ],
+    );
+  });
+
+  test("key 없는 노드는 같은 type의 key 없는 새 노드와 짝지어요", () => {
+    assert.deepEqual(
+      diff(
+        list(item("a"), h("li", null, "1")),
+        list(h("li", null, "2"), item("a")),
+      ),
+      [
+        { type: "TEXT", path: [0, 1], value: "2" },
+        { type: "MOVE", parentPath: [0], from: 1, to: 0 },
+      ],
+    );
+  });
+
+  test("key 없는 노드는 같은 type의 빈자리를 앞에서부터 찾아요", () => {
+    // 뒤에서부터 찾으면 1 → y, 2 → x로 짝지어져 TEXT 값과 MOVE가 달라져요.
+    assert.deepEqual(
+      diff(
+        list(item("a"), h("li", null, "1"), h("li", null, "2")),
+        list(h("li", null, "x"), h("li", null, "y"), item("a")),
+      ),
+      [
+        { type: "TEXT", path: [0, 1], value: "x" },
+        { type: "TEXT", path: [0, 2], value: "y" },
+        { type: "MOVE", parentPath: [0], from: 0, to: 2 },
+      ],
+    );
+  });
+
+  test("새 구간의 중복 key는 경고 1번, 뒤에 나온 노드는 CREATE", (t) => {
+    const warn = t.mock.method(console, "warn", () => {});
+    const x1 = item("x", "1");
+    const x2 = item("x", "2");
+    assert.deepEqual(diff(list(item("y")), list(x1, x2)), [
+      { type: "REMOVE", path: [0, 0] },
+      { type: "CREATE", parentPath: [0], index: 0, node: x1 },
+      { type: "CREATE", parentPath: [0], index: 1, node: x2 },
+    ]);
+    assert.equal(warn.mock.callCount(), 1);
+  });
+
+  test("이전 구간의 중복 key는 경고 없이 먼저 나온 쪽과 짝짓고 두 번째를 REMOVE", (t) => {
+    const warn = t.mock.method(console, "warn", () => {});
+    assert.deepEqual(
+      diff(
+        list(item("x", "1"), item("x", "2"), item("z")),
+        list(item("z"), item("x", "1")),
+      ),
+      [
+        { type: "REMOVE", path: [0, 1] },
+        { type: "MOVE", parentPath: [0], from: 2, to: 0 },
+      ],
+    );
+    // 경고는 새 구간에서만 내요(diff.md 중복 key).
+    assert.equal(warn.mock.callCount(), 0);
+  });
+});
+
+describe("diff: key 판단 (hasKey)", () => {
+  // 위치 비교였다면 두 자리 모두 key가 달라 REPLACE 2개가 나와요.
+  for (const key of [0, ""]) {
+    test(`key가 ${JSON.stringify(key)}인 노드가 있으면 key 비교로 가요`, () => {
+      assert.deepEqual(
+        diff(
+          root(h("ul", null, h("li", { key }, "a"), h("li", null, "b"))),
+          root(h("ul", null, h("li", null, "b"), h("li", { key }, "a"))),
+        ),
+        [{ type: "MOVE", parentPath: [0], from: 1, to: 0 }],
+      );
+    });
+  }
+
+  test("h로 만든 key 없는 목록(key가 null)은 위치 비교로 가요", () => {
+    // key 비교였다면 뒤 공통 구간에서 li가 짝지어져 REMOVE 1개만 나와요.
+    const li = h("li", null, "b");
+    assert.deepEqual(
+      diff(root(h("ul", null, h("p", null, "a"), li)), root(h("ul", null, li))),
+      [
+        { type: "REPLACE", path: [0, 0], node: li },
+        { type: "REMOVE", path: [0, 1] },
+      ],
+    );
+  });
+});
+
+describe("lis", () => {
+  test("[5, 3, 4, 0] → [1, 2]", () => {
+    assert.deepEqual(lis([5, 3, 4, 0]), [1, 2]);
+  });
+
+  test("값 0은 건너뛰어요", () => {
+    assert.deepEqual(lis([3, 1, 0, 2, 4]), [1, 3, 4]);
+    assert.deepEqual(lis([0, 0]), []);
+  });
+
+  test("빈 배열은 []", () => {
+    assert.deepEqual(lis([]), []);
+  });
+
+  test("이미 증가하면 전부, 감소하면 1개", () => {
+    assert.deepEqual(lis([1, 2, 3]), [0, 1, 2]);
+    assert.equal(lis([3, 2, 1]).length, 1);
   });
 });
 
