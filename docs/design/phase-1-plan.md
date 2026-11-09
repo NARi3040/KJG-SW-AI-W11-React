@@ -162,7 +162,7 @@ Phase 1에 포함하되 마지막에 구현해요. Notion 결정 F는 "key 비�
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
 | `lis(arr: number[]): number[]` | 공개 | 최장 증가 부분수열의 인덱스. 값 0은 제외해요 | `lis([5, 3, 4, 0])` → `[1, 2]` |
-| `keyIndexMap(c2: VNode[], start: number, end: number): Map<Key, number>` | 내부 | 4단계의 key → 새 인덱스 맵. 중복 key는 경고해요 | `e c d h`, `start: 2` → `{ e: 2, c: 3, d: 4, h: 5 }` |
+| `keyIndexMap(c2: VNode[], start: number, end: number): Map<Key, number>` | 내부 | 4단계의 key → 새 인덱스 맵. 중복 key는 경고하고 먼저 나온 인덱스를 남겨요 | `e c d h`, `start: 2` → `{ e: 2, c: 3, d: 4, h: 5 }`. `x x`, `start: 0` → `{ x: 0 }`, 경고 1번 |
 | `findMatch(prev: VNode, c2: VNode[], start: number, end: number, keyToNew: Map<Key, number>, newToOld: number[]): number \| undefined` | 내부 | 이전 노드의 새 위치를 찾아요. 없거나 찼거나 `type`이 다르면 `undefined` | key 없는 노드는 같은 타입의 빈자리를 앞에서부터 찾음 |
 | `emitPlacement(c2: VNode[], start: number, newToOld: number[], moved: boolean, path: Path, out: Patch[]): void` | 내부 | 5단계. 새 인덱스 오름차순으로 `MOVE`, `CREATE`를 내요 | `[5, 3, 4, 0]`, `start: 2` → `MOVE (4 → 2)`, `CREATE (5)` |
 | `diffKeyed(c1: VNode[], c2: VNode[], path: Path, out: Patch[]): void` | 내부 | 1–3단계를 직접 하고 4–5단계에서 위 함수를 불러요 | [key 비교 예시](vnode-spec.md#전체-예시)와 정확히 같음 |
