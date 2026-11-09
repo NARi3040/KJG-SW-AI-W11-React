@@ -126,14 +126,14 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 
 ## `setProp`
 
-위에서부터 먼저 맞는 줄 **하나**를 적용해요. `off`는 `next`가 `null`, `undefined`, `false`인 경우예요.
+위에서부터 먼저 맞는 줄 **하나**를 적용해요. `off`는 `next`가 `null`, `undefined`, `false`인 경우예요. `class`와 `style`을 제외한 속성에서는 객체 값도 `off`로 처리해요.
 
 | `key` | 처리 | 이유 |
 |---|---|---|
 | `on`으로 시작 | **Phase 1:** 아무것도 하지 않아요. 속성으로도 리스너로도 붙이지 않아요. **Phase 2:** 아래 invoker 규칙을 따라요 | 문자열로 넣어도 실행 코드가 들어가지 않아요 |
 | `class` | `off`면 속성 제거, 아니면 `className` 대입 | 비우기만 하면 `class=""`가 남아요 |
 | `style` | `off`면 속성 제거. 문자열이면 `cssText` 대입. 객체면 `cssText`를 비우고 `el.style`에 복사(키는 camelCase) | DOM에서 읽은 스타일은 문자열이에요 |
-| 그 밖 | `off`면 `removeAttribute`. 아니면 `setAttribute`, 값이 `true`면 빈 문자열이에요. 객체 값은 속성으로 쓰지 않아요 | DOM을 다시 읽었을 때 VNode와 같아야 해요 |
+| 그 밖 | `off`면 `removeAttribute`, 아니면 `setAttribute`를 써요. 값이 `true`면 빈 문자열이에요 | DOM을 다시 읽었을 때 VNode와 같아야 해요 |
 
 "그 밖" 줄을 적용한 뒤 아래 경우에는 프로퍼티도 함께 바꿔요.
 
@@ -184,7 +184,7 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 - 소스 왕복: `fromHTML(sourceOf(fromHTML(x)))`가 `fromHTML(x)`와 같은지. `x`는 `<p>a<!--c-->b</p>`, `<pre>\n\nabc</pre>`, `<textarea>\n\n</textarea>`, `<pre><div><b>x</b><i>y</i></div></pre>`, `<ul><li key="x">a</li></ul>`, `<li data-key="y" key="x">a</li>`, `<p><b>a</b> <i>b</i></p>`, `<p><b>a</b>\n<i>b</i></p>`, `<p>a<!--x-->\n<b>b</b></p>`, `<p>\n<!--x--> <b>b</b></p>`, `<li> <b>x</b></li>`, `<ul>\n  <li>a</li>\n  <li>b</li>\n</ul>`예요. 무작위 입력은 규칙대로 만든 입력만 써서 이런 경우를 잡지 못해요.
 - 다양한 태그: 아래 [HTML](#다양한-태그)로 왕복과 자가 검사를 해요.
 - `createDOM`: `select`의 `value`, `range`의 `min`/`max`/`value`, 읽어 온 `checked`.
-- `setProp`: 빈 `class` 없음, 문자열과 함수 `on*`이 모두 붙지 않음, `output`의 자식과 `li`의 `value`가 그대로임, `progress`에 잘못된 값을 넣어도 예외가 없음.
+- `setProp`: 빈 `class` 없음, 문자열과 함수 `on*`이 모두 붙지 않음, 일반 속성을 문자열에서 객체 값으로 바꾸면 기존 속성 제거, 객체 값이면 `checked`·`selected`에 `false`를 대입하고 폼의 `value`에 빈 문자열 대입, `output`의 자식과 `li`의 `value`가 그대로임, `progress`에 잘못된 값을 넣어도 예외가 없음.
 - Phase 2에서 추가: 핸들러를 교체해도 `addEventListener`는 1회, 새 핸들러 호출, 제거 시 해제.
 
 ### 다양한 태그
