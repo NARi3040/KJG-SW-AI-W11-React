@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
-# 기본값(chill 프로필, Draft 제외, 커밋마다 추가 리뷰)은 적지 않아요.
+# 기본값(chill 프로필, Draft 제외, push마다 추가 리뷰, 커밋 5개 리뷰 뒤 자동 중지)은 적지 않아요.
 # AGENTS.md와 CLAUDE.md는 CodeRabbit이 코딩 규칙으로 자동으로 읽어요.
 language: ko-KR
 tone_instructions: "한국어 해요체로 짧게 써요."
