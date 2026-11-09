@@ -1,4 +1,5 @@
-import type { Patch, Path } from "./vnode.ts";
+import { applyProps, createDOM, setProp, toHTML } from "./dom.ts";
+import type { Patch, Path, VNode } from "./vnode.ts";
 
 type Target = { parent: Node | null; node: Node | null };
 
@@ -11,15 +12,18 @@ export function resolve(container: Node, path: Path): Node {
 }
 
 export function applyPatches(container: Node, patches: Patch[]): void {
-  assertSupportedPatches(patches);
-
   const targets = locateTargets(container, patches);
   applyStructure(patches, targets);
   applyInsertions(patches, targets);
+  applyPropPatches(patches, targets);
 }
 
 export function formatPatches(patches: Patch[]): string {
-  throw new Error("미구현");
+  return JSON.stringify(patches, (key, value) => {
+    if (typeof value === "function") return "ƒ";
+    if (key === "node" && isVNode(value)) return toHTML(value);
+    return value;
+  });
 }
 
 function locateTargets(container: Node, patches: Patch[]): Target[] {
@@ -50,6 +54,8 @@ function applyStructure(patches: Patch[], targets: Target[]): void {
 
     if (patch.type === "REMOVE") {
       removeNode(target.node);
+    } else if (patch.type === "REPLACE") {
+      replaceNode(target.node, patch.node);
     } else if (patch.type === "TEXT") {
       setText(target.node, patch.value);
     } else if (patch.type === "MOVE") {
@@ -61,12 +67,28 @@ function applyStructure(patches: Patch[], targets: Target[]): void {
 function applyInsertions(patches: Patch[], targets: Target[]): void {
   for (let index = 0; index < patches.length; index += 1) {
     const patch = patches[index];
-    if (patch.type !== "MOVE") {
+    const target = targets[index];
+
+    if (patch.type === "CREATE") {
+      insertNode(target.parent, createDOM(patch.node), patch.index);
+    } else if (patch.type === "MOVE") {
+      insertNode(target.parent, target.node, patch.to);
+    }
+  }
+}
+
+function applyPropPatches(patches: Patch[], targets: Target[]): void {
+  for (let index = 0; index < patches.length; index += 1) {
+    const patch = patches[index];
+    if (patch.type !== "PROPS") {
       continue;
     }
 
-    const target = targets[index];
-    insertNode(target.parent, target.node, patch.to);
+    const element = requireElement(targets[index].node);
+    for (const key of patch.remove) {
+      setProp(element, key, null);
+    }
+    applyProps(element, patch.set);
   }
 }
 
@@ -87,6 +109,13 @@ function requireChild(parent: Node, path: Path, depth: number): Node {
   return child;
 }
 
+function requireElement(node: Node | null): Element {
+  if (node === null || node.nodeType !== 1) {
+    throw new Error("PROPS 대상이 요소가 아니에요");
+  }
+  return node as Element;
+}
+
 function missingNodeError(path: Path, depth: number, index?: number): Error {
   const at =
     index === undefined
@@ -102,6 +131,13 @@ function removeNode(node: Node | null): void {
   node.parentNode.removeChild(node);
 }
 
+function replaceNode(node: Node | null, vnode: VNode): void {
+  if (node === null || node.parentNode === null) {
+    throw new Error("REPLACE 대상이 없어요");
+  }
+  node.parentNode.replaceChild(createDOM(vnode), node);
+}
+
 function detachNode(parent: Node | null, node: Node | null): void {
   if (parent === null || node === null) {
     throw new Error("MOVE 대상이 없어요");
@@ -115,7 +151,7 @@ function insertNode(
   index: number,
 ): void {
   if (parent === null || node === null) {
-    throw new Error("MOVE 대상이 없어요");
+    throw new Error("삽입 대상이 없어요");
   }
   parent.insertBefore(node, parent.childNodes.item(index));
 }
@@ -135,15 +171,14 @@ function isTextarea(node: Node): node is HTMLTextAreaElement {
   return node.nodeType === 1 && (node as Element).tagName === "TEXTAREA";
 }
 
-// TODO(#37): CREATE, REPLACE, PROPS를 받을 수 있게 이 검사를 지워요.
-function assertSupportedPatches(patches: Patch[]): void {
-  for (const patch of patches) {
-    if (
-      patch.type !== "REMOVE" &&
-      patch.type !== "TEXT" &&
-      patch.type !== "MOVE"
-    ) {
-      throw new Error(`${patch.type} Patch는 아직 지원하지 않아요`);
-    }
-  }
+function isVNode(value: unknown): value is VNode {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    "props" in value &&
+    "key" in value &&
+    "children" in value &&
+    "flags" in value
+  );
 }
