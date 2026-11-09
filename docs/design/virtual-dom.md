@@ -13,6 +13,8 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 
 ## 함수
 
+공개 함수만 적어요. `toVNode`, `readChildren`, `readProps` 같은 내부 함수는 [phase-1-plan.md](phase-1-plan.md#최무헌-srcdomts)를 봐 주세요.
+
 | 함수 | 파일 | 입력 | 출력 |
 |---|---|---|---|
 | `createTextVNode(text)` | `vnode.ts` | `text: string \| number` | 텍스트 VNode. `flags`는 `TEXT` |
