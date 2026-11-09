@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# 기본값(chill 프로필, Draft 제외, 커밋마다 추가 리뷰)은 적지 않아요.
+# AGENTS.md와 CLAUDE.md는 CodeRabbit이 코딩 규칙으로 자동으로 읽어요.
+language: ko-KR
+tone_instructions: "한국어 해요체로 짧게 써요."
+reviews:
+  path_instructions:
+    - path: "src/**/*.ts"
+      instructions: |
+        docs/design/의 해당 설계 문서, 특히 docs/design/vnode-spec.md의 VNode·Patch 형식과 다르게 구현한 곳을 지적해요.
+        Hook과 상태가 루트 컴포넌트 밖에서 쓰였는지, 상태 변경 후 전체를 다시 그리지 않고 Diff·Patch로 갱신하는지 확인해요.
+    - path: "docs/**/*.md"
+      instructions: |
+        docs/technical-writing-principles.md의 원칙과 docs/PLANNING.md의 요구사항 ID를 기준으로 봐요.
