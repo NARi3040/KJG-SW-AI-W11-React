@@ -146,7 +146,18 @@ flowchart LR
 
 규칙: [diff.md의 key 비교](diff.md#key-비교), [LIS](diff.md#lis). 이 단계 전까지 `diffChildren`은 배열끼리 항상 `diffUnkeyed`를 불러요.
 
-Phase 1에 포함하되 마지막에 구현해요(Notion 결정 F). 늦어지면 key 비교의 4–5단계만 빼고 남은 구간을 전부 `REMOVE` + `CREATE`할 수 있어요. 결과는 같고 DOM 변경만 늘어요. 이때 `lis`, `keyIndexMap`, `findMatch`, `emitPlacement`가 빠지고 시나리오 6단계의 Patch와 DOM 변경 횟수가 바뀌어요.
+Phase 1에 포함하되 마지막에 구현해요. Notion 결정 F는 "key 비교를 Phase 1에 넣되 구현 순서상 마지막에 한다"예요. 샘플 목록에 `data-key`가 있어 `MOVE`를 시연할 수 있고, 빼도 Phase 1은 동작해요. DOM에서 읽은 VNode는 `data-key`가 없으면 key가 없기 때문이에요.
+
+**축소 구현:** 단계 9를 시작하기 전에 `src/diff.ts` 담당자(노도현)가 남은 일정을 보고 축소 여부를 정하고 PR에 적어요. 축소하면 key 비교의 4–5단계를 빼고, 1–3단계 뒤에 남은 구간을 아래처럼 처리해요.
+
+- 남은 이전 구간을 뒤 인덱스부터 `REMOVE`하고, 남은 새 구간을 새 인덱스 오름차순으로 `CREATE`해요. `REMOVE`를 모두 낸 뒤 `CREATE`를 내요.
+- `lis`, `keyIndexMap`, `findMatch`, `emitPlacement`는 만들지 않아요.
+- 결과 DOM은 같고 DOM 변경만 늘어요. 아래 기대값은 문서로 계산했고 실행하지 않았어요.
+
+| 대상 | 원래 기대값 | 축소하면 |
+|---|---|---|
+| [key 비교 예시](vnode-spec.md#전체-예시) | `MOVE` (4 → 2), `CREATE` (5) | `REMOVE [0, 4]`, `[0, 3]`, `[0, 2]`, `CREATE [0]` `index: 2`(e), `3`(c), `4`(d), `5`(h) |
+| [시연 시나리오](verify-page.md#시연-시나리오) 6단계 | `MOVE [0, 1]` `from: 2`, `to: 0`, DOM 변경 2 | `REMOVE [0, 1, 2]`, `[0, 1, 1]`, `[0, 1, 0]`, `CREATE [0, 1]` `index: 0`, `1`, `2`, DOM 변경 6 |
 
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
@@ -162,7 +173,7 @@ Phase 1에 포함하되 마지막에 구현해요(Notion 결정 F). 늦어지면
 
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
-| `resolve(container: Node, path: Path): Node` | 공개 | 경로로 노드를 찾아요 | `[]`는 `container.firstChild` |
+| `resolve(container: Node, path: Path): Node` | 공개 | 경로로 노드를 찾아요. 노드가 없으면 `path`를 담은 `Error`를 던져요 | `[]`는 `container.firstChild`. 어긋난 경로는 `Error` |
 | `locateTargets(container: Node, patches: Patch[]): Target[]` | 내부 | 1단계. 아무것도 고치지 않고 대상을 찾아요 | 호출 전후 `innerHTML`이 같음 |
 | `applyStructure(patches: Patch[], targets: Target[]): void` | 내부 | 2단계. `REMOVE`, `REPLACE`, `TEXT`, `MOVE` 떼기. `textarea`의 `TEXT`는 `.value`에도 대입해요 | 형제 여러 개 동시 삭제. 입력한 `textarea`에 `TEXT` 적용 후 `.value`가 새 값 |
 | `applyInsertions(patches: Patch[], targets: Target[]): void` | 내부 | 3단계. `CREATE`, `MOVE`를 Patch 순서대로 넣어요 | 이동한 노드가 같은 객체(`===`) |

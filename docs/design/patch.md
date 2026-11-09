@@ -19,7 +19,7 @@ Patch 형식과 Diff가 지키는 약속은 [vnode-spec.md](vnode-spec.md#patch)
 | `applyPatches(container, patches)` | `container: Node`: 영역. `patches: Patch[]`: `diff`의 결과 | 없음. 영역의 DOM을 고쳐요 |
 | `formatPatches(patches)` | `patches: Patch[]` | 로그용 JSON 문자열 |
 
-`resolve`는 루트에서 시작해 `childNodes[i]`를 따라 내려가요. 경로가 어긋나면 `undefined`를 돌려주거나 `TypeError`가 나요. 둘 다 [약속](vnode-spec.md#diff와-patch-사이의-약속)이 깨졌다는 신호예요.
+`resolve`는 루트에서 시작해 `childNodes[i]`를 따라 내려가요. 중간이나 끝에서 노드가 없으면 `Error`를 던지고, 메시지에 `path`와 어긋난 깊이를 넣어요. (예: `resolve([0, 5]): 깊이 1의 인덱스 5에 노드가 없어요`) `[]`인데 `container.firstChild`가 없을 때도 같아요. `undefined`를 돌려주지 않으므로 반환형은 `Node`예요. 어긋난 경로는 [약속](vnode-spec.md#diff와-patch-사이의-약속)이 깨졌다는 신호이고, 이 오류는 호출한 쪽의 [복구](verify-page.md#patch-실패)로 전달돼요.
 
 `formatPatches`는 `node`를 `toHTML` 문자열로, 함수를 `"ƒ"`로 바꿔요.
 
@@ -94,6 +94,7 @@ Patch: REMOVE [0, 2], REMOVE [0, 1]
 | 검사 | 기대값 |
 |---|---|
 | 인덱스 밀림 | 형제 여러 개 동시 삭제(위치 비교, key 목록) 후 DOM이 새 VNode와 같음 |
+| 어긋난 경로 | `<ul><li>a</li><li>b</li></ul>`만 담은 영역에서 `resolve(container, [5])`가 `Error`를 던지고 메시지에 `[5]`가 있음. 빈 영역에서 `resolve(container, [])`도 `Error` |
 | Diff와의 계약 | [전체 예시](vnode-spec.md#전체-예시)의 두 Patch 목록을 이전 HTML로 만든 DOM(`innerHTML`)에 적용하면 새 HTML과 같음. 영역의 `innerHTML`은 `<div class="vdom-root">`로 감싼 HTML이에요. `CREATE`, `PROPS`가 있어 [단계 7](phase-1-plan.md#순서)에서 추가해요. `diff.md`의 같은 예시 테스트와 같은 데이터를 써서, `MOVE`의 `from`을 읽는 방식 같은 해석 차이를 합치기 전에 찾아요 |
 | 최소 변경 | 텍스트 하나만 바꾸면 Patch 1개, `MutationObserver` 기록 1건 |
 | DOM 재사용 | 텍스트만 바뀐 노드, key로 이동한 노드가 같은 객체(`===`) |
