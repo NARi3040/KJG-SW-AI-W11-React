@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
-import { applyPatches, resolve } from "./patch.ts";
+import { diff } from "./diff.ts";
+import { fromHTML, readArea } from "./dom.ts";
+import { applyPatches, formatPatches, resolve } from "./patch.ts";
+import { h } from "./vnode.ts";
 import type { Patch } from "./vnode.ts";
 
 function createArea(html: string): HTMLElement {
@@ -105,6 +108,24 @@ test("applyPatches: 삭제 Patch가 오름차순이어도 대상을 먼저 찾�
     area.innerHTML,
     '<div class="vdom-root"><ul><li>a</li></ul></div>',
   );
+});
+
+test("applyPatches: key가 있는 형제 여러 개를 동시에 삭제해도 인덱스가 밀리지 않아요", () => {
+  const area = createArea(
+    '<ul><li data-key="a">a</li><li data-key="b">b</li><li data-key="c">c</li><li data-key="d">d</li><li data-key="e">e</li></ul>',
+  );
+  const newV = fromHTML(
+    '<ul><li data-key="a">a</li><li data-key="c">c</li><li data-key="e">e</li></ul>',
+  );
+
+  applyPatches(area, [
+    { type: "REMOVE", path: [0, 1] },
+    { type: "REMOVE", path: [0, 3] },
+  ]);
+
+  const root = area.firstElementChild;
+  assert.ok(root);
+  assert.deepStrictEqual(readArea(root), newV);
 });
 
 test("applyPatches: 어긋난 경로가 있으면 DOM을 고치기 전에 Error를 던져요", () => {
@@ -282,18 +303,179 @@ test("applyPatches: 한 영역을 고쳐도 다른 영역은 그대로예요", (
   );
 });
 
-test("applyPatches: 아직 지원하지 않는 Patch는 DOM을 고치기 전에 Error를 던져요", () => {
+test("applyPatches: CREATE는 index 자리에 새 서브트리를 넣어요", () => {
+  const area = createArea("<ul><li>a</li><li>c</li></ul>");
+
+  applyPatches(area, [
+    { type: "CREATE", parentPath: [0], index: 1, node: h("li", null, "b") },
+  ]);
+
+  assert.equal(
+    area.innerHTML,
+    '<div class="vdom-root"><ul><li>a</li><li>b</li><li>c</li></ul></div>',
+  );
+});
+
+test("applyPatches: CREATE의 index가 범위를 넘으면 맨 뒤에 넣어요", () => {
+  const area = createArea("<ul><li>a</li></ul>");
+
+  applyPatches(area, [
+    { type: "CREATE", parentPath: [0], index: 9, node: h("li", null, "b") },
+  ]);
+
+  assert.equal(
+    area.innerHTML,
+    '<div class="vdom-root"><ul><li>a</li><li>b</li></ul></div>',
+  );
+});
+
+test("applyPatches: REPLACE는 createDOM으로 새 서브트리로 교체해요", () => {
   const area = createArea("<p>a</p>");
-  const patches: Patch[] = [
-    { type: "REMOVE", path: [0] },
+
+  applyPatches(area, [
+    {
+      type: "REPLACE",
+      path: [0],
+      node: h("section", { class: "s" }, h("b", null, "x")),
+    },
+  ]);
+
+  assert.equal(
+    area.innerHTML,
+    '<div class="vdom-root"><section class="s"><b>x</b></section></div>',
+  );
+});
+
+test("applyPatches: 루트 REPLACE는 영역 안에서 바뀌어요", () => {
+  const area = createArea("<p>a</p>");
+
+  applyPatches(area, [
+    { type: "REPLACE", path: [], node: h("main", null, "b") },
+  ]);
+
+  assert.equal(area.innerHTML, "<main>b</main>");
+});
+
+test("applyPatches: PROPS는 새 option을 넣은 뒤 select 값을 맞춰요", () => {
+  const area = createArea('<select><option value="a">A</option></select>');
+
+  applyPatches(area, [
     {
       type: "CREATE",
-      parentPath: [],
-      index: 0,
-      node: { type: "p", props: null, key: null, children: "b", flags: 9 },
+      parentPath: [0],
+      index: 1,
+      node: h("option", { value: "b" }, "B"),
     },
+    { type: "PROPS", path: [0], set: { value: "b" }, remove: [] },
+  ]);
+
+  const select = area.querySelector("select");
+  assert.ok(select);
+  assert.equal((select as HTMLSelectElement).value, "b");
+  assert.equal(
+    area.innerHTML,
+    '<div class="vdom-root"><select value="b"><option value="a">A</option><option value="b">B</option></select></div>',
+  );
+});
+
+test("applyPatches: PROPS에서 지운 class는 빈 속성으로 남지 않아요", () => {
+  const area = createArea('<p class="x">a</p>');
+
+  applyPatches(area, [
+    { type: "PROPS", path: [0], set: {}, remove: ["class"] },
+  ]);
+
+  assert.equal(area.innerHTML, '<div class="vdom-root"><p>a</p></div>');
+});
+
+test("applyPatches: 위치 비교 예시의 Patch 목록을 적용하면 새 HTML과 같아요", () => {
+  const area = createArea('<ul><li>a</li><li class="x">b</li></ul>');
+
+  applyPatches(area, [
+    { type: "TEXT", path: [0, 0], value: "A" },
+    { type: "PROPS", path: [0, 0], set: { class: "y" }, remove: [] },
+    { type: "REMOVE", path: [0, 1] },
+  ]);
+
+  assert.equal(
+    area.innerHTML,
+    '<div class="vdom-root"><ul><li class="y">A</li></ul></div>',
+  );
+});
+
+test("applyPatches: key 비교 예시의 Patch 목록을 적용하면 새 HTML과 같아요", () => {
+  const area = createArea(
+    "<ul><li>a</li><li>b</li><li>c</li><li>d</li><li>e</li><li>f</li><li>g</li></ul>",
+  );
+  const patches: Patch[] = [
+    { type: "MOVE", parentPath: [0], from: 4, to: 2 },
+    { type: "CREATE", parentPath: [0], index: 5, node: h("li", null, "h") },
   ];
 
-  assert.throws(() => applyPatches(area, patches), /CREATE/);
-  assert.equal(area.innerHTML, '<div class="vdom-root"><p>a</p></div>');
+  applyPatches(area, patches);
+
+  assert.equal(
+    area.innerHTML,
+    '<div class="vdom-root"><ul><li>a</li><li>b</li><li>e</li><li>c</li><li>d</li><li>h</li><li>f</li><li>g</li></ul></div>',
+  );
+});
+
+test("applyPatches: 텍스트 하나만 바꾸면 Patch 1개와 DOM 변경 1건이에요", () => {
+  const area = createArea("<p>a</p>");
+  const oldV = fromHTML("<p>a</p>");
+  const newV = fromHTML("<p>b</p>");
+  const patches = diff(oldV, newV);
+
+  assert.equal(patches.length, 1);
+
+  const { mutations } = countMutations(area, () => {
+    applyPatches(area, patches);
+  });
+
+  assert.equal(mutations, 1);
+});
+
+test("applyPatches: 텍스트에서 배열로 바뀌면 CREATE해요", () => {
+  const area = createArea("<p>a</p>");
+  const oldV = fromHTML("<p>a</p>");
+  const newV = fromHTML("<p><b>x</b></p>");
+
+  applyPatches(area, diff(oldV, newV));
+
+  const root = area.firstElementChild;
+  assert.ok(root);
+  assert.deepStrictEqual(readArea(root), newV);
+});
+
+test("formatPatches: node는 HTML로, 함수는 ƒ로 바꿔요", () => {
+  const f = () => {};
+
+  assert.equal(
+    formatPatches([
+      {
+        type: "CREATE",
+        parentPath: [0],
+        index: 5,
+        node: h("p", null, "추가"),
+      },
+    ]),
+    '[{"type":"CREATE","parentPath":[0],"index":5,"node":"<p>추가</p>"}]',
+  );
+  assert.equal(
+    formatPatches([
+      { type: "PROPS", path: [0], set: { onclick: f }, remove: [] },
+    ]),
+    '[{"type":"PROPS","path":[0],"set":{"onclick":"ƒ"},"remove":[]}]',
+  );
+  assert.equal(
+    formatPatches([
+      {
+        type: "CREATE",
+        parentPath: [],
+        index: 0,
+        node: h("button", { onclick: f }, "확인"),
+      },
+    ]),
+    '[{"type":"CREATE","parentPath":[],"index":0,"node":"<button>확인</button>"}]',
+  );
 });
