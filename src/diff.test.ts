@@ -438,8 +438,8 @@ describe("diff: key 비교 (diffKeyed)", () => {
     assert.equal(warn.mock.callCount(), 1);
   });
 
-  test("이전 구간의 중복 key는 먼저 나온 쪽과 짝짓고 두 번째를 REMOVE", (t) => {
-    t.mock.method(console, "warn", () => {});
+  test("이전 구간의 중복 key는 경고 없이 먼저 나온 쪽과 짝짓고 두 번째를 REMOVE", (t) => {
+    const warn = t.mock.method(console, "warn", () => {});
     assert.deepEqual(
       diff(
         list(item("x", "1"), item("x", "2"), item("z")),
@@ -450,6 +450,8 @@ describe("diff: key 비교 (diffKeyed)", () => {
         { type: "MOVE", parentPath: [0], from: 2, to: 0 },
       ],
     );
+    // 경고는 새 구간에서만 내요(diff.md 중복 key).
+    assert.equal(warn.mock.callCount(), 0);
   });
 });
 
