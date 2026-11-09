@@ -398,7 +398,7 @@ describe("diff: key 비교 (diffKeyed)", () => {
     );
   });
 
-  test("key 없는 노드는 같은 type의 빈자리를 앞에서부터 찾아요", () => {
+  test("key 없는 노드는 같은 type의 key 없는 새 노드와 짝지어요", () => {
     assert.deepEqual(
       diff(
         list(item("a"), h("li", null, "1")),
@@ -407,6 +407,21 @@ describe("diff: key 비교 (diffKeyed)", () => {
       [
         { type: "TEXT", path: [0, 1], value: "2" },
         { type: "MOVE", parentPath: [0], from: 1, to: 0 },
+      ],
+    );
+  });
+
+  test("key 없는 노드는 같은 type의 빈자리를 앞에서부터 찾아요", () => {
+    // 뒤에서부터 찾으면 1 → y, 2 → x로 짝지어져 TEXT 값과 MOVE가 달라져요.
+    assert.deepEqual(
+      diff(
+        list(item("a"), h("li", null, "1"), h("li", null, "2")),
+        list(h("li", null, "x"), h("li", null, "y"), item("a")),
+      ),
+      [
+        { type: "TEXT", path: [0, 1], value: "x" },
+        { type: "TEXT", path: [0, 2], value: "y" },
+        { type: "MOVE", parentPath: [0], from: 0, to: 2 },
       ],
     );
   });
