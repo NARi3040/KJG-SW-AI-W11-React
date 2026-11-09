@@ -48,7 +48,7 @@ VS Code의 Live Server 같은 다른 정적 서버를 써도 돼요.
 | 문서 | 내용 |
 |---|---|
 | [docs/PLANNING.md](./docs/PLANNING.md) | 과제 요구사항 |
-| [docs/design/vnode-spec.md](./docs/design/vnode-spec.md) | VNode·Patch 공통 형식 (논의 후 작성 예정) |
+| [docs/design/vnode-spec.md](./docs/design/vnode-spec.md) | VNode·Patch 공통 형식과 설계 문서 지도 |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | 협업 규칙 (이슈, 브랜치, 커밋, PR, CI) |
 | [docs/GITHUB_GUIDE.md](./docs/GITHUB_GUIDE.md) | GitHub 초심자용 단계별 가이드 |
 | [AGENTS.md](./AGENTS.md) | AI 도구가 따를 규칙 |
