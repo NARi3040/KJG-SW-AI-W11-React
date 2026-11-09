@@ -89,6 +89,26 @@ test("setProp: 문자열과 함수 on*은 속성도 리스너도 붙이지 않�
   assert.equal(addListener.mock.callCount(), 0);
 });
 
+test("setProp: 대소문자가 섞인 on*도 직접 호출과 VNode 렌더에서 차단해요", (t) => {
+  const el = document.createElement("button");
+  const addListener = t.mock.method(el, "addEventListener");
+  let calls = 0;
+  for (const key of ["OnClick", "oNclick", "ONCLICK", "OnError", "ONERROR"]) {
+    for (const next of ["void 0", () => calls++]) {
+      setProp(el, key, next);
+      assert.equal(el.hasAttribute(key), false, key);
+      const rendered = createDOM(h("button", { [key]: next })) as HTMLElement;
+      assert.equal(rendered.hasAttribute(key), false, key);
+      rendered.dispatchEvent(new dom.window.Event("click"));
+      rendered.dispatchEvent(new dom.window.Event("error"));
+    }
+  }
+  el.dispatchEvent(new dom.window.Event("click"));
+  el.dispatchEvent(new dom.window.Event("error"));
+  assert.equal(calls, 0);
+  assert.equal(addListener.mock.callCount(), 0);
+});
+
 test("setProp: checked와 selected는 빈 문자열도 켜짐이고 off면 꺼져요", () => {
   const input = document.createElement("input");
   input.type = "checkbox";

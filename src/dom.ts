@@ -160,7 +160,7 @@ function setStyle(el: Element, next: PropValue): void {
 }
 
 export function setProp(el: Element, key: string, next: PropValue): void {
-  if (key.startsWith("on")) return;
+  if (key.toLowerCase().startsWith("on")) return;
 
   const off = next === null || next === undefined || next === false;
   if (key === "class") {
