@@ -1,13 +1,11 @@
-name: 문서 리뷰
+name: AI 리뷰
 
 on:
   pull_request:
     types: [opened, ready_for_review, reopened]
-    paths:
-      - "**/*.md"
 
 concurrency:
-  group: docs-review-${{ github.event.pull_request.number }}
+  group: ai-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:

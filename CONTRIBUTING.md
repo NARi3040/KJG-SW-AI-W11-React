@@ -76,11 +76,12 @@ feat: VNode 생성 함수 추가
 - 작성자를 제외한 1명 이상이 승인하면 머지할 수 있어요. 머지는 Squash만 허용해요.
 - Squash 머지에서는 PR 제목이 `main`의 커밋 제목이 될 수 있으므로, PR 제목도 커밋 메시지 형식으로 써요.
 
-### 문서 리뷰
+### AI 리뷰
 
 - 문서는 [문서 작성 원칙](docs/technical-writing-principles.md)에 맞춰 써요.
-- `.md` 파일이 바뀐 PR은 Claude가 이 원칙으로 리뷰하고, 리뷰 봇(`giga-deepseek[bot]`)이 결과를 PR 리뷰로 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
-- `.md` 파일과 코드가 함께 바뀐 PR은 코드도 결함 위주로 리뷰해요. 이때 CI가 끝나기를 최대 5분 기다리고, CI가 실패하면 로그 일부를 읽어서 이 PR 때문인지 판단해요. 코드만 바꾼 PR은 리뷰하지 않아요.
+- 모든 PR은 Claude가 리뷰하고, 리뷰 봇(`giga-deepseek[bot]`)이 결과를 PR 리뷰로 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
+- `.md` 파일이 바뀌면 문서 작성 원칙으로, 코드가 바뀌면 `AGENTS.md`의 구현 제약, `docs/design/` 설계 문서와의 일치, 버그와 엣지 케이스 누락, 테스트 없는 동작 변경을 봐요.
+- 코드가 바뀐 PR은 CI가 끝나기를 최대 5분 기다리고, CI가 실패하면 로그 일부를 읽어서 이 PR 때문인지 판단해요.
 - 코드와 CI 로그 일부도 Anthropic API로 전송돼요. CI 로그에 비밀 값을 출력하지 않아요.
 - 바뀐 줄에 대한 의견은 인라인 코멘트로, 바뀌지 않은 줄에 대한 의견은 리뷰 본문에 모아요.
 - 리뷰는 [`NARi3040/docs-review`](https://github.com/NARi3040/docs-review) 액션으로 실행해요(비공개 저장소). 이 저장소에 맞춘 맥락과 추가 검사는 [`.github/docs-review.md`](.github/docs-review.md)에서, 실행 설정은 [`.github/workflows/docs-review.yml`](.github/workflows/docs-review.yml)에서 고쳐요.
@@ -162,7 +163,7 @@ Discussions 탭 → Categories 옆 연필 아이콘 → **New category**에서 �
 
 [CodeRabbit GitHub App](https://github.com/apps/coderabbitai)을 이 저장소에 설치해요. 공개 저장소라 무료예요. 설정은 저장소의 `.coderabbit.yaml`을 읽으므로 웹 대시보드에서 따로 바꿀 것은 없어요.
 
-### 문서 리뷰
+### AI 리뷰
 
 Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하면 키를 입력하라고 나와요. `NARi3040/docs-review` `v2.0.0-rc.3`은 Claude Code를 `claude -p`(Agent SDK CLI)로 실행해서 프로모션 크레딧으로도 동작해요.
 
