@@ -57,7 +57,7 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 
 | 대상 | 처리 | 이유 |
 |---|---|---|
-| 공백뿐인 텍스트 노드 | 버려요. `pre`, `textarea` 안에서는 유지해요. 공백은 HTML 공백(스페이스, 탭, LF, FF, CR)만이에요 | 줄바꿈과 들여쓰기가 자식 인덱스를 어긋나게 해요. `trim()`이나 `\s`는 U+00A0(`&nbsp;`)도 공백으로 봐서 `<td>&nbsp;</td>`의 내용이 사라져요 |
+| 공백뿐인 텍스트 | 줄바꿈(LF, CR)이 있으면 버려요. 없으면 원문 그대로 두고, 공백 하나로 줄이지 않아요. `pre`, `textarea` 안에서는 모두 유지해요. 공백은 HTML 공백(스페이스, 탭, LF, FF, CR)만이에요 | 줄바꿈이 있는 공백은 들여쓰기 같은 소스 서식이에요. 남기면 자식 인덱스가 어긋나고, `sourceOf`의 들여쓰기 때문에 변경 없이 Patch해도 `[]`가 나오지 않아요. 같은 줄의 공백(`</b> <i>`)은 화면에 그려지는 내용이에요. `trim()`이나 `\s`는 U+00A0(`&nbsp;`)도 공백으로 봐서 `<td>&nbsp;</td>`의 내용이 사라져요 |
 | 내용이 있는 텍스트 | 다듬지 않고 그대로 둬요 | 앞뒤 공백도 화면에 보이는 내용이에요 |
 | 주석 등 요소·텍스트가 아닌 노드 | 버려요 | VNode로 표현하지 않아요 |
 | `script` 요소 | 버려요 | 테스트 영역에 적은 코드가 Patch 순간 실행되는 것을 막아요 |
@@ -65,6 +65,13 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 | `data-key` 속성 | `key`로 쓰고 `props`에도 남겨요. key는 `data-key`에서만 가져와요 | 왕복해도 key가 사라지지 않아요 |
 | `key` 속성 | 버려요 | `sourceOf`는 `data-key`만 써요. `key` 속성을 key로 쓰면 변경 없이 다시 Patch해도 `REMOVE`, `CREATE`가 나와요 |
 | 그 밖의 속성 | 문자열 그대로 `props`에 넣어요 | 불리언 속성(`checked`)의 값은 빈 문자열이에요 |
+
+`readChildren`은 **주석·`script` 버리기 → 이웃한 텍스트 합치기 → 공백 규칙** 순서로 처리해요. 합친 뒤에 판단해야 주석을 지운 소스를 다시 읽은 결과와 같아요.
+
+| 입력 | 자식 | 공백 판단을 먼저 하면 |
+|---|---|---|
+| `<p>a<!--x-->\n<b>b</b></p>` | `"a\n"`, `b` | `"a"`, `b`. 화면에서는 띄어 보이는데 VNode로 다시 그리면 붙어요 |
+| `<p>\n<!--x--> <b>b</b></p>` | `b` | `" "`, `b` |
 
 `fromHTML`은 `template` 요소의 `innerHTML`로 파싱해요. `template` 안의 내용은 스크립트 실행이나 이미지 로딩이 일어나지 않아서 안전하게 읽을 수 있어요.
 
@@ -88,7 +95,7 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 - `pre`, `textarea`의 내용이 `\n`으로 시작하면 여는 태그 뒤에 `\n`을 하나 더 써요. 파서가 여는 태그 바로 뒤의 줄바꿈 하나를 버리기 때문이에요.
 - `area`, `base`, `br`, `col`, `embed`, `hr`, `img`, `input`, `link`, `meta`, `source`, `track`, `wbr`은 닫는 태그를 쓰지 않아요.
 
-`sourceOf`는 루트 안쪽만 만들어요. 자식이 모두 요소일 때만 두 칸씩 들여써 줄을 바꾸고, 텍스트가 섞이면 한 줄로 둬요. `pre`, `textarea`를 만나면 그 서브트리 전체를 `toHTML` 한 줄로 써요. 안쪽 요소를 들여쓰면 그 공백이 `pre` 안이라 텍스트로 남아 자식이 늘어나요. 요소 사이에 넣은 공백은 다시 읽을 때 버려지므로 내용이 바뀌지 않아요.
+`sourceOf`는 루트 안쪽만 만들어요. 자식이 모두 요소일 때만 두 칸씩 들여써 줄을 바꾸고, 텍스트가 섞이면 한 줄로 둬요. `pre`, `textarea`를 만나면 그 서브트리 전체를 `toHTML` 한 줄로 써요. 안쪽 요소를 들여쓰면 그 공백이 `pre` 안이라 텍스트로 남아 자식이 늘어나요. 들여쓰기는 항상 줄바꿈과 함께 들어가므로 다시 읽을 때 버려져서 내용이 바뀌지 않아요. 같은 줄의 공백 `" "`이 자식에 있으면 텍스트가 섞인 것이라 한 줄로 쓰므로 그대로 돌아와요.
 
 ```text
 fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
@@ -142,7 +149,10 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 |---|---|
 | 빈 영역, 빈 문자열 | `children`이 `null`인 루트 |
 | `<p>a<!--c-->b</p>` | `children`은 `"ab"`. 주석은 버려지고 이웃한 텍스트는 합쳐져요 |
-| `<p><b>a</b> <i>b</i></p>` | **요소 사이 공백이 사라져요.** 공백뿐인 텍스트로 보기 때문이에요. 띄어쓰기가 필요하면 텍스트에 붙여 써요 |
+| `<p><b>a</b> <i>b</i></p>` | 자식은 `b`, `" "`, `i`예요. 같은 줄의 공백은 남아 화면처럼 띄어져요 |
+| `<p><b>a</b>\n<i>b</i></p>` | **공백이 사라져요.** 브라우저는 띄어 보여 주지만 줄바꿈이 있는 공백이라 버려요. 띄어 보이려면 같은 줄에 써요 |
+| `<div>a</div> <div>b</div>` | `" "`이 자식으로 남아요. 화면에는 보이지 않지만 VNode와 Patch 로그에 나와요 |
+| `<p> </p>`, `<p>\n</p>` | `children`은 `" "`, `null`이에요 |
 | `<div key="a">` | `key` 속성은 읽을 때 버려요. key는 `null`이에요. key를 남기려면 `data-key`로 써요 |
 | `<li data-key="y" key="x">` | key는 `"y"`예요 |
 | `<li data-key="">`, `h("li", { key: 0 })` | key는 `""`, `0`이에요. key 없음이 아니에요 |
@@ -168,9 +178,9 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 ### 검사
 
 - `h` 정규화: 위 표의 호출 전부.
-- 읽기: 위 입력·출력 표, 공백 제거, `pre` 유지, `&nbsp;` 유지, `data-key`, `key` 속성 버림, 거짓 값 key.
+- 읽기: 위 입력·출력 표, 공백 규칙과 합치는 순서(위 두 표), `pre` 유지, `&nbsp;` 유지, `data-key`, `key` 속성 버림, 거짓 값 key.
 - 왕복: [무작위 입력](#무작위-입력)에서 `fromHTML(sourceOf(v))`가 `v`와 같은지.
-- 소스 왕복: `fromHTML(sourceOf(fromHTML(x)))`가 `fromHTML(x)`와 같은지. `x`는 `<p>a<!--c-->b</p>`, `<pre>\n\nabc</pre>`, `<textarea>\n\n</textarea>`, `<pre><div><b>x</b><i>y</i></div></pre>`, `<ul><li key="x">a</li></ul>`, `<li data-key="y" key="x">a</li>`예요. 무작위 입력은 규칙대로 만든 입력만 써서 이런 경우를 잡지 못해요.
+- 소스 왕복: `fromHTML(sourceOf(fromHTML(x)))`가 `fromHTML(x)`와 같은지. `x`는 `<p>a<!--c-->b</p>`, `<pre>\n\nabc</pre>`, `<textarea>\n\n</textarea>`, `<pre><div><b>x</b><i>y</i></div></pre>`, `<ul><li key="x">a</li></ul>`, `<li data-key="y" key="x">a</li>`, `<p><b>a</b> <i>b</i></p>`, `<p><b>a</b>\n<i>b</i></p>`, `<p>a<!--x-->\n<b>b</b></p>`, `<p>\n<!--x--> <b>b</b></p>`, `<li> <b>x</b></li>`, `<ul>\n  <li>a</li>\n  <li>b</li>\n</ul>`예요. 무작위 입력은 규칙대로 만든 입력만 써서 이런 경우를 잡지 못해요.
 - 다양한 태그: 아래 [HTML](#다양한-태그)로 왕복과 자가 검사를 해요.
 - `createDOM`: `select`의 `value`, `range`의 `min`/`max`/`value`, 읽어 온 `checked`.
 - `setProp`: 빈 `class` 없음, 문자열과 함수 `on*`이 모두 붙지 않음, `output`의 자식과 `li`의 `value`가 그대로임, `progress`에 잘못된 값을 넣어도 예외가 없음.
@@ -178,7 +188,7 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 
 ### 다양한 태그
 
-요소 사이의 공백과 줄바꿈은 읽을 때 버려져요. 줄을 바꿔 적어도 결과는 같아요.
+줄바꿈이 들어간 요소 사이 공백은 읽을 때 버려져요. 줄을 바꿔 적어도 결과는 같아요. `<p>` 안의 `</b> <i>`처럼 같은 줄의 공백은 남아요.
 
 ```text
 <section id="s" class="a b" data-x="1">

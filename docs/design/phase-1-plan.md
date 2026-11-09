@@ -92,7 +92,7 @@ flowchart LR
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
 | `readProps(el: Element): Props \| null` | 내부 | `on*`, `key` 속성 버리기. 속성을 다 읽은 뒤 `data-key`가 있으면 `key`로도 복사 | `<li data-key="a" onclick="f()">` → `{ "data-key": "a", key: "a" }`. `<li key="x">` → `null` |
-| `readChildren(parent: ParentNode, keepWs: boolean): (VNode \| string)[]` | 내부 | 공백(HTML 공백만), 주석, `script` 버리기. 요소는 `toVNode` | `<p> </p>`의 결과는 `[]`, `<pre> </pre>`의 결과는 `[" "]`(`keepWs` 적용), `<p>&nbsp;</p>`의 결과는 `["\u00a0"]` |
+| `readChildren(parent: ParentNode, keepWs: boolean): (VNode \| string)[]` | 내부 | 주석·`script` 버리기 → 이웃한 텍스트 합치기 → 줄바꿈이 있는 공백뿐인 텍스트 버리기(HTML 공백만). 요소는 `toVNode` | `<p>\n</p>`의 결과는 `[]`, `<p> </p>`의 결과는 `[" "]`, `<pre>\n\n</pre>`의 결과는 `["\n"]`(`keepWs` 적용), `<p>&nbsp;</p>`의 결과는 `["\u00a0"]`, `<p>a<!--x-->\n<b>b</b></p>`의 결과는 `["a\n", b]` |
 | `toVNode(el: Element, keepWs: boolean): VNode` | 내부 | 태그 이름, `readProps`, `readChildren`을 `h`에 넘겨요 | `pre`, `textarea` 안에서 `keepWs`가 켜져요 |
 | `readArea(parent: ParentNode): VNode` | 공개 | 자식을 `div.vdom-root`로 감싸요 | 빈 영역의 `children`이 `null` |
 | `fromHTML(html: string): VNode` | 공개 | `template`으로 파싱하고 `readArea`에 넘겨요 | [virtual-dom.md의 입력·출력 표](virtual-dom.md#dom--vnode) 네 줄 |
