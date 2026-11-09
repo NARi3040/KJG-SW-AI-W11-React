@@ -204,10 +204,16 @@ test("실패 복구: 예외를 다시 던지고 history, 실제 영역, textarea
   load(real, editor);
   const beforeStack = [...history.stack];
   const beforeIndex = history.index;
-  const invalid = `<p>A</p><input type="file" value="a">`;
+  // 실제 영역을 VNode와 어긋나게 만들어요. TEXT가 적용된 뒤 PROPS에서 예외가 나요
+  const select = real.querySelector("select");
+  assert.ok(select);
+  select.replaceWith(document.createTextNode("바꿔치기"));
+  const invalid = sourceOf(history.stack[history.index])
+    .replace("프로필", "나리 프로필")
+    .replace('name="track"', 'name="t"');
 
   editor.value = invalid;
-  assert.throws(() => onPatch(real, editor), /InvalidStateError/);
+  assert.throws(() => onPatch(real, editor), /PROPS 대상이 요소가 아니에요/);
 
   assert.equal(history.index, beforeIndex);
   assert.deepEqual(history.stack, beforeStack);
@@ -224,21 +230,25 @@ test("실패 복구: 예외를 다시 던지고 history, 실제 영역, textarea
   assertAreaMatchesCurrent();
 });
 
-test("실패 복구: 다시 그릴 수 없는 VNode는 history에 넣지 않아요", () => {
+test("파일 입력: value가 있어도 Patch하고 뒤로·앞으로 이동해요", () => {
   real.innerHTML = `<input type="text" value="a">`;
   load(real, editor);
-  const beforeStack = [...history.stack];
 
-  // type만 바뀌면 .value 대입이 없어 Patch는 성공하지만 이 VNode는 새로 그릴 수 없어요
   editor.value = `<input type="file" value="a">`;
-  assert.throws(() => onPatch(real, editor), /InvalidStateError/);
-  assert.deepEqual(history.stack, beforeStack);
-  assertAreaMatchesCurrent();
-
+  onPatch(real, editor);
   editor.value = `<p>A</p><input type="file" value="a">`;
-  assert.throws(() => onPatch(real, editor), /InvalidStateError/);
-  assert.equal(history.stack.length, 1);
+  onPatch(real, editor);
+  assert.equal(history.stack.length, 3);
   assertAreaMatchesCurrent();
+  const file = real.querySelector("input");
+  assert.equal(file?.value, "");
+  assert.equal(file?.getAttribute("value"), "a");
+
+  go(real, editor, -1);
+  go(real, editor, -1);
+  assert.equal(history.index, 0);
+  assertAreaMatchesCurrent();
+  assert.equal(real.querySelector("input")?.value, "a");
 });
 
 test("잘못된 중첩: 파서가 고친 구조로 비교하고 textarea를 다시 채워요", () => {

@@ -74,11 +74,12 @@ Patch: REMOVE [0, 2], REMOVE [0, 1]
 
 `applyPatches`는 예외를 잡지 않아요. 예외가 나면 DOM이 절반만 바뀐 채로 호출한 쪽에 전달돼요. 복구는 호출하는 쪽의 책임이에요([verify-page.md](verify-page.md#patch-실패)).
 
-| 예외가 나는 입력 | 오류 |
+| 예외가 나는 경우 | 오류 |
 |---|---|
-| `<input type="file" value="a">` | `value` 프로퍼티 대입에서 `InvalidStateError` (jsdom에서 확인) |
+| 실제 영역이 Patch 기준 VNode와 어긋나 경로에 노드가 없음 | `resolve([...]): ... 노드가 없어요` |
+| 실제 영역의 요소 자리에 텍스트 노드가 있음 | `PROPS 대상이 요소가 아니에요` |
 
-이 표는 확인한 예이고 전부가 아니에요. `<p a<b="1">` 같은 속성 이름은 jsdom에서 예외가 나지 않았지만, 실제 브라우저에서는 확인하지 않았어요.
+이 표는 확인한 예이고 전부가 아니에요. 파서가 받아들인 HTML로 만든 VNode는 그릴 때 예외가 나지 않게 했어요([virtual-dom.md](virtual-dom.md)의 `=`로 시작하는 속성, 파일 입력의 `value`). 태그·속성 이름의 문자, `input` type별 `value` 등 3,390개 입력을 jsdom 31과 Chrome 157에서 그려 보고 예외가 없는 것을 확인했어요. Firefox, Safari는 확인하지 않았어요.
 
 ## 복잡도
 
