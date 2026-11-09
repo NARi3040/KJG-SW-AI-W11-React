@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Virtual DOM 검증 페이지</title>
+    <style>
+      body {
+        margin: 0 auto;
+        max-width: 1200px;
+        padding: 16px;
+        font-family: system-ui, sans-serif;
+        color: #1f2328;
+        background: #fff;
+      }
+      .areas {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 720px) {
+        .areas {
+          grid-template-columns: 1fr;
+        }
+      }
+      .area {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .area > h2 {
+        margin: 0 0 8px;
+        font-size: 1rem;
+      }
+      #real {
+        flex: 1;
+        min-height: 320px;
+        padding: 12px;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        overflow: auto;
+      }
+      #editor {
+        flex: 1;
+        min-height: 320px;
+        padding: 12px;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        font:
+          13px/1.5 ui-monospace,
+          monospace;
+        resize: vertical;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin: 16px 0 8px;
+      }
+      .controls button {
+        padding: 6px 14px;
+        font: inherit;
+        cursor: pointer;
+      }
+      .controls button:disabled {
+        cursor: not-allowed;
+      }
+      #error {
+        min-height: 1.5em;
+        margin: 0 0 8px;
+        color: #cf222e;
+      }
+      #log {
+        margin: 0;
+        padding: 12px;
+        min-height: 3em;
+        background: #f6f8fa;
+        border-radius: 6px;
+        font:
+          13px/1.5 ui-monospace,
+          monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Virtual DOM 검증 페이지</h1>
+    <div class="areas">
+      <section class="area">
+        <h2>실제 영역</h2>
+        <div id="real">
+          <section id="profile" class="card">
+            <h2>프로필</h2>
+            <p>이름: <b>정글러</b> · 기수: <i>13기</i></p>
+            <ul class="todo">
+              <li data-key="vdom">Virtual DOM</li>
+              <li data-key="diff">Diff</li>
+              <li data-key="patch">Patch</li>
+            </ul>
+            <label><input type="checkbox" checked /> 알림 받기</label>
+            <select name="track">
+              <option value="fe">프론트</option>
+              <option value="be" selected>백엔드</option>
+            </select>
+          </section>
+        </div>
+      </section>
+      <section class="area">
+        <h2><label for="editor">테스트 영역</label></h2>
+        <textarea id="editor" spellcheck="false"></textarea>
+      </section>
+    </div>
+    <div class="controls">
+      <button id="patch" type="button">Patch</button>
+      <button id="back" type="button">뒤로가기</button>
+      <button id="forward" type="button">앞으로가기</button>
+      <span>DOM 변경: <output id="mutations">-</output></span>
+    </div>
+    <p id="error" role="alert"></p>
+    <pre id="log" role="log" aria-label="Patch 로그"></pre>
+    <script type="module">
+      import { start } from "./dist/verify-page.js";
+      start(document);
+    </script>
+  </body>
+</html>

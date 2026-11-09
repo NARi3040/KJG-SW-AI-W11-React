@@ -38,8 +38,11 @@ npm test
 `npm run build`로 `dist/`에 JS를 만들고, HTML에서 `<script type="module">`로 불러와요. ES 모듈은 파일을 직접 열면(`file://`) 동작하지 않으므로 로컬 서버로 열어요.
 
 ```bash
-python3 -m http.server 8000   # http://localhost:8000
+npm run build
+python3 -m http.server 8000   # http://localhost:8000/verify.html
 ```
+
+`verify.html`은 Virtual DOM 검증 페이지예요. 실제 영역과 테스트 영역(textarea)을 나란히 두고, Patch·뒤로가기·앞으로가기 결과를 Patch 로그와 DOM 변경 횟수로 보여 줘요.
 
 VS Code의 Live Server 같은 다른 정적 서버를 써도 돼요.
 

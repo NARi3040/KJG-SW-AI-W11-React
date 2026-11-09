@@ -196,7 +196,21 @@ Phase 1에 포함하되 마지막에 구현해요. Notion 결정 F는 "key 비�
 | `go(real: Element, editor: Editor, delta: -1 \| 1): Patch[] \| null` | 공개 | `diff`, `applyOrRestore`, textarea, `index` 이동 | 5단계까지의 뒤로가기(단계 8), 시나리오 7단계(단계 10) |
 | `countMutations<T>(target: Node, fn: () => T): { result: T; mutations: number }` | 공개 | [감시 옵션](verify-page.md#함수)으로 `takeRecords`를 세고 `finally`로 `disconnect`해요 | 시나리오의 DOM 변경 횟수 |
 
-시작 코드와 화면은 함수를 아직 나눌 수 없어요. 페이지 경로와 화면 배치가 [미정](verify-page.md#미정)이기 때문이에요. 정해지면 이 문서에 추가해요.
+## 박준호: 검증 페이지 (단계 11)
+
+규칙: [verify-page.md의 화면](verify-page.md#화면), [Patch 실패](verify-page.md#patch-실패). 페이지 경로와 화면 배치는 2026-11-09에 담당자(박준호)가 정했어요.
+
+| 파일 | 하는 일 |
+|---|---|
+| `verify.html` | 저장소 루트의 페이지예요. [샘플 HTML](verify-page.md#샘플-html)을 담은 실제 영역과 화면 요소, CSS를 두고 `./dist/verify-page.js`의 `start(document)`를 불러요 |
+| `src/verify-page.ts` | 시작 코드예요. 요소를 찾아 버튼에 연결하고 결과와 오류를 화면에 써요. `src/index.ts`에서 내보내지 않아요 |
+
+| 함수 | 공개 | 하는 일 | 완료 확인 |
+|---|---|---|---|
+| `start(doc: Document): void` | 공개 | 요소를 찾고, `load` 후 버튼 상태를 맞추고, 세 버튼에 `click` 핸들러를 달아요 | `verify.html`로 만든 문서에서 로드 직후 textarea가 `sourceOf(v0)`이고 두 이동 버튼이 비활성 |
+| `byId(doc: Document, id: string, tag: string): Element` | 내부 | `id`로 찾고 `tagName`이 맞는지 확인해요. 없거나 다르면 `id`를 담은 `Error`를 던져요 | `#log`가 없는 문서에서 `start`가 `#log`를 담은 `Error`를 던짐 |
+| `run(action: () => Patch[] \| null): void` | 내부 | `countMutations(real, action)`로 실행해 로그와 변경 횟수를 쓰고 오류를 지워요. 예외가 나면 메시지만 `#error`에 써요. 끝나면 `canGo`로 버튼 상태를 맞춰요 | Patch 후 로그가 Patch당 한 줄([verify-page.md의 화면](verify-page.md#화면)), 변경 횟수가 `1`. Patch 5개면 5줄, 없으면 `변경 없음`. 실패 후 `#error`에 메시지, 다음 성공에서 지워짐 |
+
 
 ## 담당 사이의 약속
 
@@ -217,5 +231,5 @@ Patch의 형식과 순서는 [vnode-spec.md의 약속](vnode-spec.md#diff와-pat
 
 | 항목 | 영향 |
 |---|---|
-| 페이지 경로와 시작 코드, 화면 배치와 요소 `id` | 단계 11 |
+| ~~페이지 경로와 시작 코드, 화면 배치와 요소 `id`~~ | ~~단계 11~~ 2026-11-09 결정: [검증 페이지](#박준호-검증-페이지-단계-11) |
 | #4~#7을 세부 이슈로 나눌지 | 이슈의 할 일에 "세부 이슈로 나누기"가 있어요. 위 단계를 그대로 쓸 수 있어요 |
