@@ -93,7 +93,7 @@ https://github.com/NARi3040/KJG-SW-AI-W11-React/compare/main...octocat/12?quick_
 ### ⑥ CI와 리뷰
 
 - PR 아래쪽에서 `check`가 통과했는지 봐요. 실패하면 **Details**로 로그를 확인해요.
-- `.md` 파일을 바꿨다면 Claude가 [문서 작성 원칙](technical-writing-principles.md)으로 리뷰하고, 리뷰 봇(`giga-deepseek[bot]`)이 결과를 PR 리뷰로 남겨요. 인라인 코멘트와 리뷰 본문을 모두 확인하고 고칠지 정해요. Claude 리뷰를 다시 받으려면 PR을 닫았다가 다시 열어요.
+- 모든 PR은 Claude가 리뷰하고, 리뷰 봇(`giga-deepseek[bot]`)이 결과를 PR 리뷰로 남겨요. `.md` 파일은 [문서 작성 원칙](technical-writing-principles.md)으로, 코드는 `AGENTS.md` 제약과 `docs/design/` 설계, 버그와 테스트 누락을 봐요. 인라인 코멘트와 리뷰 본문을 모두 확인하고 고칠지 정해요. Claude 리뷰를 다시 받으려면 PR을 닫았다가 다시 열어요.
 - CodeRabbit(`coderabbitai[bot]`)이 모든 PR에 요약과 리뷰 코멘트를 남겨요. 코멘트에 답글로 질문할 수 있고, `@coderabbitai review`로 다시 리뷰를 요청할 수 있어요.
 - 수정은 같은 브랜치에 커밋하고 `git push`하면 PR에 자동으로 쌓여요.
 - 리뷰 반영이 끝나면 **Re-request review**를 눌러요.
