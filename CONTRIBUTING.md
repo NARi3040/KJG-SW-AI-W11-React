@@ -87,6 +87,13 @@ feat: VNode 생성 함수 추가
 - 리뷰는 PR을 열 때 한 번만 실행돼요. 수정 후 다시 받으려면 PR을 닫았다가 다시 열어요.
 - Claude의 코멘트는 참고용이에요. 반영 여부는 작성자와 리뷰어가 정하고, 사람 1명의 승인은 그대로 필요해요.
 
+### CodeRabbit 리뷰
+
+- 모든 PR은 [CodeRabbit](https://www.coderabbit.ai)이 한국어로 자동 리뷰해요. 코드와 `.md` 파일을 모두 봐요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
+- 커밋을 push하면 바뀐 부분만 다시 리뷰해요. 커밋 5개를 리뷰하면 자동 리뷰가 멈추므로, 그 뒤에는 PR 코멘트에 `@coderabbitai review`를 남겨 직접 요청해요.
+- 리뷰 기준은 `AGENTS.md`와 [`.coderabbit.yaml`](.coderabbit.yaml)이고, 문서는 [문서 작성 원칙](docs/technical-writing-principles.md)도 기준으로 봐요. 기준을 바꾸려면 이 파일들을 고쳐요.
+- CodeRabbit의 코멘트도 참고용이에요. 사람 1명의 승인은 그대로 필요해요.
+
 ## Discussions
 
 - **Daily Scrum**: `Daily Scrum` 카테고리에 매일 각자 글을 하나씩 써요. 템플릿이 자동으로 채워져요.
@@ -150,6 +157,10 @@ Discussions 탭 → Categories 옆 연필 아이콘 → **New category**에서 �
 |---|---|---|
 | Daily Scrum | `daily-scrum` | Open-ended discussion |
 | Core Time | `core-time` | Open-ended discussion |
+
+### CodeRabbit
+
+[CodeRabbit GitHub App](https://github.com/apps/coderabbitai)을 이 저장소에 설치해요. 공개 저장소라 무료예요. 설정은 저장소의 `.coderabbit.yaml`을 읽으므로 웹 대시보드에서 따로 바꿀 것은 없어요.
 
 ### 문서 리뷰
 
