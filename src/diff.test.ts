@@ -1,34 +1,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { diff } from "./diff.ts";
-import {
-  ARRAY_CHILDREN,
-  ELEMENT,
-  TEXT,
-  TEXT_CHILDREN,
-  TEXT_TYPE,
-} from "./vnode.ts";
-import type { Key, Patch, Props, VNode } from "./vnode.ts";
-
-// h(#32)가 아직 미구현이라 VNode를 손으로 만들어요(phase-1-plan.md 단계 5).
-function text(s: string): VNode {
-  return { type: TEXT_TYPE, props: null, key: null, children: s, flags: TEXT };
-}
-
-function el(
-  type: string,
-  props: Props | null = null,
-  children: VNode[] | string | null = null,
-  key: Key | null = null,
-): VNode {
-  const childFlag =
-    typeof children === "string"
-      ? TEXT_CHILDREN
-      : Array.isArray(children)
-        ? ARRAY_CHILDREN
-        : 0;
-  return { type, props, key, children, flags: ELEMENT | childFlag };
-}
+import { createTextVNode, h } from "./vnode.ts";
+import type { Child, Patch, Props, VNode } from "./vnode.ts";
 
 function deepFreeze(v: VNode): VNode {
   if (v.props) Object.freeze(v.props);
@@ -40,30 +14,30 @@ function deepFreeze(v: VNode): VNode {
 }
 
 // <div class="vdom-root">를 루트로 둔 영역이에요. 경로 [0]이 그 안의 첫 자식이에요.
-function root(...children: VNode[]): VNode {
-  return el("div", { class: "vdom-root" }, children.length ? children : null);
+function root(...children: Child[]): VNode {
+  return h("div", { class: "vdom-root" }, ...children);
 }
 
 describe("diff: 변경 없음", () => {
   test("모양이 같은 다른 객체면 []", () => {
     const make = () =>
       root(
-        el("ul", { class: "list" }, [el("li", null, "a"), el("li", null, "b")]),
-        el("p", null, [text("x "), el("b", null, "y")]),
+        h("ul", { class: "list" }, h("li", null, "a"), h("li", null, "b")),
+        h("p", null, "x ", h("b", null, "y")),
       );
     assert.deepEqual(diff(make(), make()), []);
   });
 
   test("같은 VNode 객체면 []", () => {
-    const v = root(el("p", null, "a"));
+    const v = root(h("p", null, "a"));
     assert.deepEqual(diff(v, v), []);
   });
 
   test("이전 트리의 서브트리를 그대로 재사용하면 그 아래는 비교하지 않아요", () => {
-    const shared = el("ul", null, [el("li", null, "a")]);
+    const shared = h("ul", null, h("li", null, "a"));
     const patches = diff(
-      root(shared, el("p", null, "x")),
-      root(shared, el("p", null, "y")),
+      root(shared, h("p", null, "x")),
+      root(shared, h("p", null, "y")),
     );
     assert.deepEqual(patches, [{ type: "TEXT", path: [1], value: "y" }]);
   });
@@ -73,9 +47,9 @@ describe("diff: vnode-spec.md 위치 비교 예시", () => {
   // 이전: <ul><li>a</li><li class="x">b</li></ul>
   // 새것: <ul><li class="y">A</li></ul>
   const oldV = root(
-    el("ul", null, [el("li", null, "a"), el("li", { class: "x" }, "b")]),
+    h("ul", null, h("li", null, "a"), h("li", { class: "x" }, "b")),
   );
-  const newV = root(el("ul", null, [el("li", { class: "y" }, "A")]));
+  const newV = root(h("ul", null, h("li", { class: "y" }, "A")));
 
   test("예시의 세 Patch와 정확히 같아요", () => {
     assert.deepEqual(diff(oldV, newV), [
@@ -96,65 +70,58 @@ describe("diff: vnode-spec.md 위치 비교 예시", () => {
 
 describe("diff: 노드 비교 (isSame, 교체)", () => {
   test("같은 태그에 다른 key면 REPLACE", () => {
-    const n = el("li", null, "a", "b");
-    assert.deepEqual(diff(root(el("li", null, "a", "a")), root(n)), [
+    const n = h("li", { key: "b" }, "a");
+    assert.deepEqual(diff(root(h("li", { key: "a" }, "a")), root(n)), [
       { type: "REPLACE", path: [0], node: n },
     ]);
   });
 
   test("key가 null과 0이면 다른 노드예요", () => {
-    const n = el("li", null, "a", 0);
-    assert.deepEqual(diff(root(el("li", null, "a")), root(n)), [
+    const n = h("li", { key: 0 }, "a");
+    assert.deepEqual(diff(root(h("li", null, "a")), root(n)), [
       { type: "REPLACE", path: [0], node: n },
     ]);
   });
 
   test("key가 같으면 같은 노드로 보고 안쪽을 비교해요", () => {
     assert.deepEqual(
-      diff(root(el("li", null, "a", "k")), root(el("li", null, "b", "k"))),
+      diff(root(h("li", { key: "k" }, "a")), root(h("li", { key: "k" }, "b"))),
       [{ type: "TEXT", path: [0], value: "b" }],
     );
   });
 
   test("태그가 다르면 REPLACE만 내고 안쪽은 보지 않아요", () => {
-    const n = el("ol", { class: "y" }, [el("li", null, "b")]);
+    const n = h("ol", { class: "y" }, h("li", null, "b"));
     assert.deepEqual(
-      diff(root(el("ul", { class: "x" }, [el("li", null, "a")])), root(n)),
+      diff(root(h("ul", { class: "x" }, h("li", null, "a"))), root(n)),
       [{ type: "REPLACE", path: [0], node: n }],
     );
   });
 
   test("루트끼리 태그가 다르면 경로 []의 REPLACE", () => {
-    const n = el("section", null, "a");
-    assert.deepEqual(diff(el("div", null, "a"), n), [
+    const n = h("section", null, "a");
+    assert.deepEqual(diff(h("div", null, "a"), n), [
       { type: "REPLACE", path: [], node: n },
     ]);
   });
 
   test("텍스트 VNode ↔ 요소는 REPLACE", () => {
-    const b = el("b", null, "x");
-    const t = text("x");
+    const b = h("b", null, "x");
     assert.deepEqual(
-      diff(
-        root(el("p", null, [text("x"), el("i")])),
-        root(el("p", null, [b, el("i")])),
-      ),
+      diff(root(h("p", null, "x", h("i"))), root(h("p", null, b, h("i")))),
       [{ type: "REPLACE", path: [0, 0], node: b }],
     );
     assert.deepEqual(
-      diff(
-        root(el("p", null, [b, el("i")])),
-        root(el("p", null, [t, el("i")])),
-      ),
-      [{ type: "REPLACE", path: [0, 0], node: t }],
+      diff(root(h("p", null, b, h("i"))), root(h("p", null, "x", h("i")))),
+      [{ type: "REPLACE", path: [0, 0], node: createTextVNode("x") }],
     );
   });
 
   test("독립 텍스트 VNode의 내용이 다르면 그 텍스트 노드 경로로 TEXT", () => {
     assert.deepEqual(
       diff(
-        root(el("p", null, [text("a"), el("b", null, "x")])),
-        root(el("p", null, [text("c"), el("b", null, "x")])),
+        root(h("p", null, "a", h("b", null, "x"))),
+        root(h("p", null, "c", h("b", null, "x"))),
       ),
       [{ type: "TEXT", path: [0, 0], value: "c" }],
     );
@@ -163,8 +130,8 @@ describe("diff: 노드 비교 (isSame, 교체)", () => {
   test("자식 Patch가 자기 PROPS보다 먼저 나와요", () => {
     assert.deepEqual(
       diff(
-        root(el("ul", { class: "a" }, [el("li", { id: "1" }, "x")])),
-        root(el("ul", { class: "b" }, [el("li", { id: "2" }, "y")])),
+        root(h("ul", { class: "a" }, h("li", { id: "1" }, "x"))),
+        root(h("ul", { class: "b" }, h("li", { id: "2" }, "y"))),
       ),
       [
         { type: "TEXT", path: [0, 0], value: "y" },
@@ -177,7 +144,7 @@ describe("diff: 노드 비교 (isSame, 교체)", () => {
 
 describe("diff: 속성 비교 (diffProps)", () => {
   const propsPatch = (oldP: Props | null, newP: Props | null) =>
-    diff(root(el("p", oldP)), root(el("p", newP)));
+    diff(root(h("p", oldP)), root(h("p", newP)));
 
   test("값이 같으면 PROPS를 내지 않아요", () => {
     assert.deepEqual(propsPatch({ a: "1", b: "2" }, { b: "2", a: "1" }), []);
@@ -227,16 +194,26 @@ describe("diff: 속성 비교 (diffProps)", () => {
       { type: "PROPS", path: [0], set: { a: undefined }, remove: [] },
     ]);
   });
+
+  test("key는 props가 아니라서 속성 비교에 나오지 않아요", () => {
+    assert.deepEqual(
+      diff(
+        root(h("ul", null, h("li", { key: "k", id: "1" }, "a"))),
+        root(h("ul", null, h("li", { key: "k", id: "2" }, "a"))),
+      ),
+      [{ type: "PROPS", path: [0, 0], set: { id: "2" }, remove: [] }],
+    );
+  });
 });
 
 describe("diff: 위치 비교 (diffUnkeyed)", () => {
-  const li = (s: string) => el("li", null, s);
+  const li = (s: string) => h("li", null, s);
 
   test("이전이 길면 남는 쪽을 뒤 인덱스부터 REMOVE", () => {
     assert.deepEqual(
       diff(
-        root(el("ul", null, [li("a"), li("b"), li("c")])),
-        root(el("ul", null, [li("a")])),
+        root(h("ul", null, li("a"), li("b"), li("c"))),
+        root(h("ul", null, li("a"))),
       ),
       [
         { type: "REMOVE", path: [0, 2] },
@@ -249,10 +226,7 @@ describe("diff: 위치 비교 (diffUnkeyed)", () => {
     const b = li("b");
     const c = li("c");
     assert.deepEqual(
-      diff(
-        root(el("ul", null, [li("a")])),
-        root(el("ul", null, [li("a"), b, c])),
-      ),
+      diff(root(h("ul", null, li("a"))), root(h("ul", null, li("a"), b, c))),
       [
         { type: "CREATE", parentPath: [0], index: 1, node: b },
         { type: "CREATE", parentPath: [0], index: 2, node: c },
@@ -262,8 +236,8 @@ describe("diff: 위치 비교 (diffUnkeyed)", () => {
 
   test("한 부모 아래에 REMOVE와 CREATE가 함께 나오지 않아요", () => {
     const patches = diff(
-      root(el("ul", null, [li("a"), li("b"), li("c")])),
-      root(el("ul", null, [li("x"), li("y")])),
+      root(h("ul", null, li("a"), li("b"), li("c"))),
+      root(h("ul", null, li("x"), li("y"))),
     );
     assert.deepEqual(patches, [
       { type: "TEXT", path: [0, 0], value: "x" },
@@ -273,9 +247,9 @@ describe("diff: 위치 비교 (diffUnkeyed)", () => {
   });
 
   test("한계: 맨 앞 형제가 사라지면 뒤 형제가 당겨져 전부 REPLACE", () => {
-    const h2 = el("h2", null, "프로필");
-    const p = el("p", null, "소개");
-    const ul = el("ul", null, [li("a")]);
+    const h2 = h("h2", null, "프로필");
+    const p = h("p", null, "소개");
+    const ul = h("ul", null, li("a"));
     const patches = diff(root(h2, p, ul), root(p, ul));
     assert.deepEqual(patches, [
       { type: "REPLACE", path: [0], node: p },
@@ -286,14 +260,14 @@ describe("diff: 위치 비교 (diffUnkeyed)", () => {
 });
 
 describe("diff: 자식 비교 9가지 조합 (diffChildren)", () => {
-  // 대상 요소는 경로 [0]의 p예요.
-  const a = el("b", null, "a");
-  const b = el("i", null, "b");
-  const c = el("u", null, "c");
+  // 대상 요소는 경로 [0]의 p예요. from, to는 h의 자식 인자로 넘겨요.
+  const a = h("b", null, "a");
+  const b = h("i", null, "b");
+  const c = h("u", null, "c");
   const cases: {
     name: string;
-    from: VNode[] | string | null;
-    to: VNode[] | string | null;
+    from: Child;
+    to: Child;
     expected: Patch[];
   }[] = [
     { name: "없음 → 없음", from: null, to: null, expected: [] },
@@ -374,7 +348,7 @@ describe("diff: 자식 비교 9가지 조합 (diffChildren)", () => {
   for (const { name, from, to, expected } of cases) {
     test(name, () => {
       assert.deepEqual(
-        diff(root(el("p", null, from)), root(el("p", null, to))),
+        diff(root(h("p", null, from)), root(h("p", null, to))),
         expected,
       );
     });
@@ -384,32 +358,30 @@ describe("diff: 자식 비교 9가지 조합 (diffChildren)", () => {
 describe("diff: 다섯 경우", () => {
   test("CREATE, REMOVE, REPLACE, TEXT, PROPS가 각각 나와요", () => {
     const kinds = (o: VNode, n: VNode) => diff(o, n).map((p) => p.type);
-    const li = (s: string) => el("li", null, s);
+    const li = (s: string) => h("li", null, s);
 
     assert.deepEqual(
       kinds(
-        root(el("ul", null, [li("a")])),
-        root(el("ul", null, [li("a"), li("b")])),
+        root(h("ul", null, li("a"))),
+        root(h("ul", null, li("a"), li("b"))),
       ),
       ["CREATE"],
     );
     assert.deepEqual(
       kinds(
-        root(el("ul", null, [li("a"), li("b")])),
-        root(el("ul", null, [li("a")])),
+        root(h("ul", null, li("a"), li("b"))),
+        root(h("ul", null, li("a"))),
       ),
       ["REMOVE"],
     );
+    assert.deepEqual(kinds(root(h("b", null, "a")), root(h("u", null, "a"))), [
+      "REPLACE",
+    ]);
+    assert.deepEqual(kinds(root(h("b", null, "a")), root(h("b", null, "c"))), [
+      "TEXT",
+    ]);
     assert.deepEqual(
-      kinds(root(el("b", null, "a")), root(el("u", null, "a"))),
-      ["REPLACE"],
-    );
-    assert.deepEqual(
-      kinds(root(el("b", null, "a")), root(el("b", null, "c"))),
-      ["TEXT"],
-    );
-    assert.deepEqual(
-      kinds(root(el("b", { id: "x" }, "a")), root(el("b", { id: "y" }, "a"))),
+      kinds(root(h("b", { id: "x" }, "a")), root(h("b", { id: "y" }, "a"))),
       ["PROPS"],
     );
   });
@@ -418,9 +390,9 @@ describe("diff: 다섯 경우", () => {
 describe("diff: 깊은 중첩", () => {
   // div 아래 b 999겹, 맨 안쪽 i
   function nested(inner: string): VNode {
-    let node = el("i", null, inner);
-    for (let i = 0; i < 999; i++) node = el("b", null, [node]);
-    return el("div", null, [node]);
+    let node = h("i", null, inner);
+    for (let i = 0; i < 999; i++) node = h("b", null, node);
+    return h("div", null, node);
   }
 
   test("맨 안쪽 텍스트만 바꾸면 TEXT 1개, path는 0이 1,000개", () => {
@@ -439,13 +411,13 @@ describe("diff: 직렬화", () => {
   test("함수 props와 텍스트 VNode가 없는 Patch 목록은 JSON 왕복 후 같아요", () => {
     const patches = diff(
       root(
-        el("ul", { class: "x" }, [el("li", null, "a"), el("li", null, "b")]),
-        el("p", null, "q"),
+        h("ul", { class: "x" }, h("li", null, "a"), h("li", null, "b")),
+        h("p", null, "q"),
       ),
       root(
-        el("ul", { class: "y" }, [el("li", { id: "1" }, "A")]),
-        el("div", null, "r"),
-        el("ol", null, [el("li", null, "c")]),
+        h("ul", { class: "y" }, h("li", { id: "1" }, "A")),
+        h("div", null, "r"),
+        h("ol", null, h("li", null, "c")),
       ),
     );
     assert.deepEqual(
@@ -460,19 +432,21 @@ describe("diff: 불변", () => {
   test("모든 VNode를 Object.freeze해도 오류 없이 같은 결과", () => {
     const make = () => ({
       oldV: root(
-        el("ul", { class: "x" }, [
-          el("li", null, "a"),
-          el("li", null, "b"),
-          el("li", null, "c"),
-        ]),
-        el("p", null, [text("t"), el("b", null, "y")]),
-        el("span", null, "s"),
+        h(
+          "ul",
+          { class: "x" },
+          h("li", null, "a"),
+          h("li", null, "b"),
+          h("li", null, "c"),
+        ),
+        h("p", null, "t", h("b", null, "y")),
+        h("span", null, "s"),
       ),
       newV: root(
-        el("ul", { class: "y" }, [el("li", null, "A")]),
-        el("p", null, "only text"),
-        el("span", null, [el("i", null, "n")]),
-        el("hr"),
+        h("ul", { class: "y" }, h("li", null, "A")),
+        h("p", null, "only text"),
+        h("span", null, h("i", null, "n")),
+        h("hr"),
       ),
     });
     const plain = make();
