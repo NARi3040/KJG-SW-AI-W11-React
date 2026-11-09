@@ -142,7 +142,7 @@ export type Patch =
 | `PROPS` | 같은 태그, 속성이 다름 | `path`: 대상 요소. `set`: 추가·변경할 속성. `remove`: 지울 속성 이름 | `{ type: "PROPS", path: [0, 0], set: { class: "y" }, remove: [] }` |
 | `MOVE` | key 목록에서 순서가 바뀜(심화) | `parentPath`: 부모의 경로. `from`: 이전 인덱스. `to`: 새 인덱스 | `{ type: "MOVE", parentPath: [0], from: 4, to: 2 }` |
 
-- **`TEXT`의 `path`:** 자식이 문자열인 요소는 그 요소를, 독립 텍스트 VNode는 그 텍스트 노드를 가리켜요. 적용은 둘 다 `textContent` 대입이에요.
+- **`TEXT`의 `path`:** 자식이 문자열인 요소는 그 요소를, 독립 텍스트 VNode는 그 텍스트 노드를 가리켜요. 적용은 둘 다 `textContent` 대입이에요. 대상이 `textarea`면 `.value`에도 대입해요([patch.md](patch.md#textarea의-text)).
 - **`REPLACE` 아래쪽:** 경로에 Patch를 내지 않아요. 새 서브트리는 `node` 하나로 만들어요.
 - **옛 값:** Patch에 싣지 않아요. Phase 2의 옛 이벤트 리스너는 요소별 맵에서 꺼내요([virtual-dom.md](virtual-dom.md#setprop)).
 

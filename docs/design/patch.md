@@ -38,7 +38,7 @@ formatPatches([{ type: "PROPS", path: [0], set: { onclick: f }, remove: [] }]);
 | 단계 | 하는 일 | 이유 |
 |---|---|---|
 | 1. 찾기 | 아무것도 고치기 전에 모든 대상을 이전 구조에서 찾아 둬요. `CREATE`는 부모, `MOVE`는 부모와 옮길 노드(`childNodes[from]`), 나머지는 `path`의 노드예요 | 앞 Patch가 뒤 Patch의 인덱스를 밀어내는 일이 없어요 |
-| 2. 구조 | Patch 순서대로 `REMOVE`는 제거, `REPLACE`는 `createDOM(node)`로 교체, `TEXT`는 `textContent` 대입, `MOVE`는 대상을 떼어 둬요 | 부모 아래에 움직이지 않는 노드만 남아요 |
+| 2. 구조 | Patch 순서대로 `REMOVE`는 제거, `REPLACE`는 `createDOM(node)`로 교체, `TEXT`는 `textContent` 대입(대상이 `textarea`면 `.value`에도 대입), `MOVE`는 대상을 떼어 둬요 | 부모 아래에 움직이지 않는 노드만 남아요. `textarea`는 [아래 설명](#textarea의-text) |
 | 3. 삽입 | `CREATE`와 `MOVE`를 Patch 순서대로 `parent.childNodes[index]` 앞에 넣어요. 그 자리에 노드가 없으면 맨 뒤에 넣어요. `MOVE`의 `index`는 `to`예요 | 아래 설명 |
 | 4. 속성 | `PROPS`를 Patch 순서대로 적용해요. `remove`를 먼저 `setProp(el, k, null)`로 지우고, `value` 외 `set`, 마지막에 `value`를 써요 | 새 `option`이 들어간 뒤 `select`의 값을 맞춰요 |
 
@@ -47,6 +47,18 @@ formatPatches([{ type: "PROPS", path: [0], set: { onclick: f }, remove: [] }]);
 **`MOVE`를 한 번에 `insertBefore`하지 않는 이유**: 아직 옮기지 않은 노드가 앞쪽에 남아 있으면 인덱스가 어긋나요. 떼어 내기와 넣기로 나눠도 `MutationObserver` 기록은 2건으로 같아요.
 
 `REPLACE`의 대상이 루트여도 같아요. 루트의 부모는 영역이므로 영역 안에서 바뀌어요.
+
+### `textarea`의 `TEXT`
+
+`textarea`는 기본값(자식 텍스트, `textContent`)과 화면에 그려지는 현재값(`.value`)을 따로 가져요. 사용자가 한 번 입력하면 브라우저는 기본값이 바뀌어도 현재값에 복사하지 않아요(HTML 표준의 dirty value flag). `textContent`만 바꾸면 Patch 로그에는 `TEXT`가 찍히는데 화면은 사용자가 쓴 글 그대로예요.
+
+그래서 `TEXT`의 대상이 `textarea` 요소면 `textContent`를 대입한 뒤 같은 값을 `.value`에도 대입해요. 요소인지는 `nodeType`과 `tagName`으로 판단해요([DOM 전역 규칙](virtual-dom.md#dom-전역-규칙)).
+
+- 사용자가 그 칸에 쓴 글은 그 칸에 `TEXT`가 올 때 VNode 값으로 덮어써져요. 그 칸을 건드리지 않는 Patch에서는 그대로 남아요.
+- `.value` 대입은 `MutationObserver` 기록을 남기지 않아요. 기록은 `textContent` 대입의 `childList` 1건이에요(jsdom에서 확인).
+- `textarea`의 자식은 텍스트뿐이고 `h`가 이웃한 텍스트를 합치므로, `textarea` 안의 `TEXT`는 항상 `textarea` 요소를 가리켜요.
+
+Chrome 157 headless와 jsdom에서 확인했어요. 입력 후 `textContent`만 바꾸면 `.value`는 `"메모안녕"` 그대로이고, `.value`에도 대입하면 새 값이 돼요.
 
 ## 예시
 
@@ -88,6 +100,7 @@ Patch: REMOVE [0, 2], REMOVE [0, 1]
 | 자식 종류 전환 | 텍스트 ↔ 배열, 배열 → 없음, 없음 → 텍스트, 텍스트 → 없음, 루트 교체 |
 | 영역 독립 | 같은 VNode로 두 영역을 그린 뒤 한쪽만 고쳐도 다른 쪽은 그대로 |
 | 속성 | 새 `option`과 함께 `select` 값 변경, 삭제 후 빈 `class` 없음 |
+| `textarea`의 `TEXT` | `<textarea>메모</textarea>`에 `.value = "메모안녕"`으로 입력을 흉내 낸 뒤 `{ type: "TEXT", path: [], value: "할 일" }`을 적용하면 `.value`와 `textContent`가 모두 `"할 일"`, `MutationObserver` 기록 1건 |
 | 무작위 key 목록 | 시드 1–5, 시드마다 2,000쌍. 길이 0–12, key는 `a`–`t`에서 중복 없이 뽑아요. 노드의 20%는 key 없이, 20%는 `li` 대신 `p`로 만들어요. 적용 결과의 `innerHTML`이 새로 그린 것과 같음. 모든 VNode와 `children` 배열을 `Object.freeze` |
 | 무작위 HTML | [무작위 입력 규칙](virtual-dom.md#무작위-입력)으로 만든 두 HTML을 `fromHTML`로 읽어 `diff`, `applyPatches`한 뒤 자가 검사가 통과함. 모든 VNode와 `children` 배열을 `Object.freeze` |
 | 자가 검사 | `readArea(container.firstElementChild)`가 새 VNode와 `assert.deepStrictEqual`로 같음 |

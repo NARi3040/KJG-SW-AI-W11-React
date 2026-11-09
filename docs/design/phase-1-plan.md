@@ -164,7 +164,7 @@ Phase 1에 포함하되 마지막에 구현해요(Notion 결정 F). 늦어지면
 |---|---|---|---|
 | `resolve(container: Node, path: Path): Node` | 공개 | 경로로 노드를 찾아요 | `[]`는 `container.firstChild` |
 | `locateTargets(container: Node, patches: Patch[]): Target[]` | 내부 | 1단계. 아무것도 고치지 않고 대상을 찾아요 | 호출 전후 `innerHTML`이 같음 |
-| `applyStructure(patches: Patch[], targets: Target[]): void` | 내부 | 2단계. `REMOVE`, `REPLACE`, `TEXT`, `MOVE` 떼기 | 형제 여러 개 동시 삭제 |
+| `applyStructure(patches: Patch[], targets: Target[]): void` | 내부 | 2단계. `REMOVE`, `REPLACE`, `TEXT`, `MOVE` 떼기. `textarea`의 `TEXT`는 `.value`에도 대입해요 | 형제 여러 개 동시 삭제. 입력한 `textarea`에 `TEXT` 적용 후 `.value`가 새 값 |
 | `applyInsertions(patches: Patch[], targets: Target[]): void` | 내부 | 3단계. `CREATE`, `MOVE`를 Patch 순서대로 넣어요 | 이동한 노드가 같은 객체(`===`) |
 | `applyPropPatches(patches: Patch[], targets: Target[]): void` | 내부 | 4단계. `remove`를 `setProp(el, k, null)`로 지우고 `applyProps(el, set)`를 불러요 | 새 `option`과 함께 `select` 값 변경 |
 | `applyPatches(container: Node, patches: Patch[]): void` | 공개 | 위 네 함수를 차례로 불러요. 예외를 잡지 않아요 | 손으로 쓴 Patch로 형제 삭제와 이동 후 DOM이 기대와 같음. 무작위 테스트는 단계 10이에요 |
