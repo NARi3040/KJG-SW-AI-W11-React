@@ -37,6 +37,23 @@ test("setProp: 일반 속성과 true, 빈 문자열, 숫자 0을 반영해요", 
   assert.equal(el.hasAttribute("data-object"), false);
 });
 
+test("setProp: 일반 속성을 객체 값으로 바꾸면 기존 속성을 제거해요", () => {
+  const el = document.createElement("div");
+  const next = Object.freeze({ x: "y" });
+  for (const key of ["title", "data-x"]) {
+    setProp(el, key, "이전 값");
+    setProp(el, key, next);
+    assert.equal(el.hasAttribute(key), false, key);
+
+    applyProps(el, { [key]: "이전 값" });
+    applyProps(el, { [key]: next });
+    assert.equal(el.hasAttribute(key), false, key);
+
+    setProp(el, key, next);
+    assert.equal(el.hasAttribute(key), false, key);
+  }
+});
+
 for (const off of [null, undefined, false]) {
   test(`setProp: ${String(off)}는 class, style과 일반 속성을 제거해요`, () => {
     const el = document.createElement("div");

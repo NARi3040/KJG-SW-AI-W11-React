@@ -174,8 +174,10 @@ export function setProp(el: Element, key: string, next: PropValue): void {
     return;
   }
   if (off) el.removeAttribute(key);
-  else if (typeof next === "object") return;
-  else el.setAttribute(key, next === true ? "" : String(next));
+  else if (typeof next === "object") {
+    el.removeAttribute(key);
+    return;
+  } else el.setAttribute(key, next === true ? "" : String(next));
 
   if (key === "checked" && "checked" in el) el.checked = !off;
   if (key === "selected" && "selected" in el) el.selected = !off;
