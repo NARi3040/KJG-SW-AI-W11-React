@@ -3,11 +3,7 @@ import type { Patch, Path } from "./vnode.ts";
 type Target = { parent: Node | null; node: Node | null };
 
 export function resolve(container: Node, path: Path): Node {
-  if (path.length === 0) {
-    return requireFirstChild(container, path);
-  }
-
-  let node = container;
+  let node = requireFirstChild(container, path);
   for (let depth = 0; depth < path.length; depth += 1) {
     node = requireChild(node, path, depth);
   }
