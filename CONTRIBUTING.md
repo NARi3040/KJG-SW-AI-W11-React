@@ -91,7 +91,7 @@ feat: VNode 생성 함수 추가
 
 - 모든 PR은 [CodeRabbit](https://www.coderabbit.ai)이 한국어로 자동 리뷰해요. 코드와 `.md` 파일을 모두 봐요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
 - 커밋을 push하면 바뀐 부분만 다시 리뷰해요. 리뷰한 커밋이 5개를 넘으면 자동 리뷰가 멈추므로, 그 뒤에는 PR 코멘트에 `@coderabbitai review`를 남겨 직접 요청해요.
-- 리뷰 기준은 `AGENTS.md`와 [`.coderabbit.yaml`](.coderabbit.yaml)이에요. 기준을 바꾸려면 이 파일들을 고쳐요.
+- 리뷰 기준은 `AGENTS.md`와 [`.coderabbit.yaml`](.coderabbit.yaml)이고, 문서는 [문서 작성 원칙](docs/technical-writing-principles.md)도 기준으로 봐요. 기준을 바꾸려면 이 파일들을 고쳐요.
 - CodeRabbit의 코멘트도 참고용이에요. 사람 1명의 승인은 그대로 필요해요.
 
 ## Discussions
