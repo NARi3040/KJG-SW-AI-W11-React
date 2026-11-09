@@ -40,7 +40,7 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 2. 남은 자식이 텍스트 하나면 `children`은 문자열이고 `TEXT_CHILDREN`이에요. 숫자는 문자열로 바꿔요.
 3. 남은 자식이 그 밖이면 `children`은 배열이고 `ARRAY_CHILDREN`이에요. 요소와 섞인 텍스트는 텍스트 VNode로 감싸요.
 4. 남은 자식이 없으면 `children`은 `null`이에요.
-5. `props`에서 `key`를 꺼내 최상위 필드로 옮겨요. `null`과 `undefined`만 key 없음(`null`)이에요. `0`과 `""`도 key예요. `class`가 없으면 `className`을 `class`로 바꿔요. 남은 속성이 없으면 `props`는 `null`이에요.
+5. `props`에서 `key`를 꺼내 최상위 필드로 옮겨요. `null`과 `undefined`만 key 없음(`null`)이에요. `0`과 `""`도 key예요. `type`이 문자열(요소)이고 `class`가 없으면 `className`을 `class`로 바꿔요. 컴포넌트의 props는 바꾸지 않고 그대로 넘겨요. 컴포넌트가 받은 `className`을 읽을 수 있어야 하기 때문이에요. 남은 속성이 없으면 `props`는 `null`이에요.
 6. `type`이 문자열이면 `ELEMENT`, 함수면 `COMPONENT`를 `flags`에 합쳐요.
 
 | 호출 | 결과 |
@@ -49,6 +49,7 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 | `h("p", null, "a", 1)` | `children`은 `"a1"`, `flags: 9` |
 | `h("p", null, "a", h("b"))` | `children`은 텍스트 VNode와 `b` VNode의 배열, `flags: 17` |
 | `h("li", { key: "a", className: "x" })` | `{ type: "li", props: { class: "x" }, key: "a", children: null, flags: 1 }` |
+| `h(Item, { className: "x" })` | `{ type: Item, props: { className: "x" }, key: null, children: null, flags: 4 }`. 컴포넌트라 `className`이 그대로예요 |
 | `h("ul", null, false, null, [h("li"), [h("li")]])` | `children`은 `li` 2개의 배열 |
 
 ## DOM → VNode

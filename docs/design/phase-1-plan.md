@@ -80,7 +80,7 @@ flowchart LR
 |---|---|---|---|
 | `createTextVNode(text: string \| number): VNode` | 공개 | 텍스트 VNode를 만들어요 | `createTextVNode(1).children`이 `"1"`, `flags`가 `TEXT` |
 | `normalizeChildren(raw: Child[]): { children: VNode[] \| string \| null; childFlag: number }` | 내부 | 평탄화, 버리기, 이웃한 텍스트 합치기, 텍스트 감싸기 | `["a"]` → `"a"`와 `TEXT_CHILDREN`. `["a", 1]` → `"a1"`. `[]` → `null`과 0 |
-| `normalizeProps(props: Props \| null): { props: Props \| null; key: Key \| null }` | 내부 | `key` 분리, `className` → `class`, 빈 객체 → `null` | `{ key: "a", className: "x" }` → `{ class: "x" }`와 `"a"`. `{ key: 0 }` → `null`과 `0` |
+| `normalizeProps(props: Props \| null, isElement: boolean): { props: Props \| null; key: Key \| null }` | 내부 | `key` 분리, 요소일 때만 `className` → `class`, 빈 객체 → `null` | `{ key: "a", className: "x" }`, `true` → `{ class: "x" }`와 `"a"`. 같은 입력, `false` → `{ className: "x" }`와 `"a"`. `{ key: 0 }` → `null`과 `0` |
 | `h(type: string \| Component, props?: Props \| null, ...children: Child[]): VNode` | 공개 | 위 둘을 불러 VNode를 조립하고 `flags`를 계산해요 | [virtual-dom.md의 호출 표](virtual-dom.md#h) 전부 |
 
 ## 최무헌: `src/dom.ts`
@@ -151,8 +151,8 @@ Phase 1에 포함하되 마지막에 구현해요. Notion 결정 F는 "key 비�
 **축소 구현:** 단계 9를 시작하기 전에 `src/diff.ts` 담당자(노도현)가 남은 일정을 보고 축소 여부를 정하고 PR에 적어요. 축소하면 key 비교의 4–5단계를 빼고, 1–3단계 뒤에 남은 구간을 아래처럼 처리해요.
 
 - 남은 이전 구간을 뒤 인덱스부터 `REMOVE`하고, 남은 새 구간을 새 인덱스 오름차순으로 `CREATE`해요. `REMOVE`를 모두 낸 뒤 `CREATE`를 내요.
-- `lis`, `keyIndexMap`, `findMatch`, `emitPlacement`는 만들지 않아요.
-- 결과 DOM은 같고 DOM 변경만 늘어요. 아래 기대값은 문서로 계산했고 실행하지 않았어요.
+- `keyIndexMap`, `findMatch`, `emitPlacement`는 만들지 않아요. `lis`는 공개 함수이고 다른 함수에 기대지 않는 순수 함수라서, 축소해도 구현하고 [테스트](diff.md#테스트)해요.
+- 결과 DOM 구조는 같고 DOM 변경만 늘어요. 다만 남은 구간의 노드는 새로 만들어지므로 DOM 객체가 바뀌고, 사용자가 실제 영역에서 바꾼 폼 상태(체크, 입력값)는 VNode 값으로 돌아가요. 아래 기대값은 문서로 계산했고 실행하지 않았어요.
 
 | 대상 | 원래 기대값 | 축소하면 |
 |---|---|---|

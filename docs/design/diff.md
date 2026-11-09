@@ -119,7 +119,7 @@ n은 노드 수, m은 한 부모의 자식 수예요.
 |---|---|
 | 변경 없음 | `[]` |
 | [위치 비교 예시](vnode-spec.md#전체-예시) | 예시의 세 Patch와 정확히 같음 |
-| [key 비교 예시](vnode-spec.md#전체-예시) | `MOVE` 1개(`from: 4`, `to: 2`), `CREATE` 1개(`index: 5`) |
+| [key 비교 예시](vnode-spec.md#전체-예시) | `MOVE` 1개(`from: 4`, `to: 2`), `CREATE` 1개(`index: 5`). [축소 구현](phase-1-plan.md#key-비교-단계-9)이면 그 표의 값(`REMOVE` 3개, `CREATE` 4개) |
 | 다섯 경우 | `CREATE`, `REMOVE`, `REPLACE`, `TEXT`, `PROPS`가 각각 나옴 |
 | 9가지 조합 | 위 표와 같음 |
 | `lis([5, 3, 4, 0])` | `[1, 2]` |
