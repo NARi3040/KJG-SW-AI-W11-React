@@ -7,7 +7,7 @@
 | 상태 | 공통 형식 합의 완료 ([vnode-spec.md](vnode-spec.md)). 페이지 경로와 화면 배치는 2026-11-09에 정했어요([화면](#화면)) |
 | 다루는 요구사항 | R1-3, R1-4, R1-5, R1-6, R1-7, R3-3 |
 | 관련 이슈 | #7 |
-| 소스 파일 | `src/app.ts`, `src/app.test.ts`, `verify.html`, `src/verify-page.ts`, `src/verify-page.test.ts` |
+| 소스 파일 | `src/app.ts`, `src/app.test.ts`, `verify.html`, `src/verify-page.ts`, `src/verify-cases.ts`, `src/verify-page.test.ts` |
 
 ## 화면 흐름
 
@@ -15,7 +15,7 @@
 flowchart LR
   S["실제 영역 샘플 HTML"] -->|"readArea"| V0["VNode v0"]
   V0 -->|"mountArea"| R["실제 영역"]
-  V0 -->|"sourceOf"| T["테스트 영역 (textarea)"]
+  V0 -->|"sourceOf"| T["테스트 영역 (Monaco, 대체는 textarea)"]
   T -->|"Patch: fromHTML"| N["새 VNode"]
   N -->|"diff(현재, 새것)"| P["Patch 목록과 로그"]
   P -->|"applyPatches"| R
@@ -26,7 +26,7 @@ flowchart LR
 
 ## 함수
 
-`Editor`는 `{ value: string }`이에요. `HTMLTextAreaElement`가 이 모양이라 그대로 넘기고, 테스트에서는 일반 객체를 넘겨요.
+`Editor`는 `{ value: string }`이에요. `HTMLTextAreaElement`가 이 모양이라 그대로 넘기고, Monaco 에디터는 `getValue`/`setValue`를 감싼 같은 모양의 객체로 넘겨요([테스트 영역 에디터](#테스트-영역-에디터)). 테스트에서는 일반 객체를 넘겨요. 아래에서 "테스트 영역"은 이 `Editor`를 말해요.
 
 | 함수 | 입력 | 출력 | 하는 일 |
 |---|---|---|---|
@@ -47,12 +47,12 @@ flowchart LR
 **각 규칙의 이유**
 
 - **로드 때 새로 그려요.** 원래 DOM에는 VNode에서 버린 공백 텍스트 노드가 있어 경로가 어긋나요. 대가는 로드 때 1회 전체 렌더예요. 이후 갱신은 전부 Diff와 Patch로 해요.
-- **Patch 후 textarea를 다시 채워요.** 파서는 잘못된 중첩을 고쳐 읽어요. `<p>a<div>b</div></p>`는 `p`가 닫히고 `div`가 형제가 되며 빈 `p`가 하나 더 생겨요. 다시 채우면 실제로 적용된 구조를 볼 수 있어요.
-- **기준은 항상 `history`예요.** 이전 VNode를 textarea에서 다시 만들지 않아요. 실제 영역의 DOM은 항상 `history.stack[history.index]`와 같아요.
+- **Patch 후 테스트 영역을 다시 채워요.** 파서는 잘못된 중첩을 고쳐 읽어요. `<p>a<div>b</div></p>`는 `p`가 닫히고 `div`가 형제가 되며 빈 `p`가 하나 더 생겨요. 다시 채우면 실제로 적용된 구조를 볼 수 있어요.
+- **기준은 항상 `history`예요.** 이전 VNode를 테스트 영역에서 다시 만들지 않아요. 실제 영역의 DOM은 항상 `history.stack[history.index]`와 같아요.
 - **복제하지 않아요.** VNode는 불변이고 DOM 참조가 없어서 히스토리가 같은 객체를 그대로 저장해요.
 - **변경 횟수:** `MutationObserver`의 `takeRecords`로 그 자리에서 꺼내므로 비동기로 기다리지 않아요. `fn`이 예외를 던져도 `finally`로 `disconnect`해요. 노드 추가·제거는 `childList`, 속성은 `attributes`, 독립 텍스트 VNode의 `TEXT`는 `characterData`로 잡혀요. 깊은 노드를 보려면 `subtree`가 필요해요. `MutationObserver`는 전역이 아니라 `target.ownerDocument.defaultView`에서 꺼내요([DOM 전역 규칙](virtual-dom.md#dom-전역-규칙)).
 
-R1-4의 "테스트 영역을 그려요"는 textarea에 HTML 소스를 보여 주는 것으로 해석했어요. 태그와 속성 변경까지 다섯 경우를 모두 시연할 수 있기 때문이에요. Notion 결정 D로 확정했어요.
+R1-4의 "테스트 영역을 그려요"는 테스트 영역 에디터에 HTML 소스를 보여 주는 것으로 해석했어요. 태그와 속성 변경까지 다섯 경우를 모두 시연할 수 있기 때문이에요. Notion 결정 D로 확정했어요.
 
 ## Patch 실패
 
@@ -70,7 +70,7 @@ Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이�
 상태: 실제 영역의 select가 텍스트 노드로 바뀌어 VNode와 어긋남
 입력: h2를 "나리 프로필"로, select의 name을 "t"로 바꾼 소스
 결과: h2 TEXT가 적용된 뒤 PROPS에서 "PROPS 대상이 요소가 아니에요" 전달,
-      실제 영역은 복구되어 history의 현재 VNode와 같음, history는 그대로, textarea는 입력 그대로
+      실제 영역은 복구되어 history의 현재 VNode와 같음, history는 그대로, 테스트 영역은 입력 그대로
 ```
 
 ## 샘플 HTML
@@ -98,7 +98,7 @@ Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이�
 
 화면에 Patch 로그(`formatPatches`)와 DOM 변경 횟수(`countMutations`)를 함께 띄워요. 바뀐 곳만 건드렸다는 것을 데이터와 숫자로 보여 주기 위해서예요. 아래 값은 실행해서 확인했고, 단계를 이어서 진행한 결과예요.
 
-| 단계 | textarea에서 할 일 | Patch | DOM 변경 |
+| 단계 | 테스트 영역에서 할 일 | Patch | DOM 변경 |
 |---|---|---|---|
 | 1 | 정글러 → 나리 | `TEXT [0, 1, 1]` | 1 |
 | 2 | `class="card"` → `class="card dark"` | `PROPS [0]` | 1 |
@@ -203,7 +203,7 @@ key 목록은 `<ul>` 안의 `<li data-key="…">`예요. `c(내용 C)`처럼 적
 | 닫는 태그 | Monaco는 HTML 닫는 태그를 자동으로 넣지 않아요. 내용 변경이 `>` 한 글자면 `closingTagFor`로 닫는 태그를 구해 `executeEdits`로 커서 뒤에 넣고 커서는 그 앞에 둬요. `<li>`를 치면 `<li>\|</li>`가 돼요(`\|`는 커서). [빈 요소](https://html.spec.whatwg.org/multipage/syntax.html#void-elements)와 `/>`로 끝난 태그, 닫는 태그, 주석은 건너뛰어요. 되돌리기·다시 실행과 `setValue`로 바뀐 내용에는 반응하지 않아요. 넣기 전에 `pushUndoStop`을 불러서 Ctrl+Z 한 번에 넣은 닫는 태그만 지워져요. 한계: 이미 닫힌 태그의 `>`를 지웠다가 다시 치거나, 속성 값·주석 안에서 `>`를 쳐도 닫는 태그가 들어가요. 막으려면 HTML을 파싱해야 해서 하지 않았어요 |
 | 불러오기 실패 | 로더가 없거나(`require`가 함수가 아님) 에디터 모듈을 못 불러오거나 `create`가 던지거나 10초(`MONACO_TIMEOUT_MS`) 안에 끝나지 않으면 textarea로 `start(doc)`를 불러요. `start`는 한 번만 불러요 |
 
-- Monaco를 불러오기 전에는 버튼에 핸들러가 없어요. 늦어도 10초 뒤에는 동작해요.
+- Monaco를 불러오기 전에는 버튼에 핸들러가 없어요. 10초 제한은 `startPage`가 시작할 때부터 세요. `verify.html`이 `loader.js`를 `defer`로 불러서 `startPage`는 `loader.js` 다운로드가 끝나거나 실패한 뒤에 실행돼요. 그래서 `loader.js` 다운로드 자체에는 시간 제한이 없어요. 이 파일은 작고, 인터넷이 없으면 바로 실패해서 받아들였어요.
 - 인터넷 연결이 없으면 textarea로 동작해요.
 
 ## 엣지 케이스
@@ -213,23 +213,23 @@ key 목록은 `<ul>` 안의 `<li data-key="…">`예요. `c(내용 C)`처럼 적
 | 내용을 바꾸지 않고 Patch | Patch는 `[]`이지만 `history`에 항목이 추가되고 앞으로가기 기록이 잘려요. 주석, `pre`, `textarea`, `key` 속성이 있어도 `[]`예요([소스 왕복](virtual-dom.md#검사)) |
 | 히스토리 끝에서 이동 | `go`는 `null`을 돌려주고 아무것도 하지 않아요. 버튼은 `canGo`로 비활성화해요 |
 | 뒤로간 뒤 Patch | 앞으로가기 기록을 잘라내요 |
-| textarea를 비우고 Patch | 루트만 남아요. 영역 자체는 그대로예요 |
-| 잘못된 중첩 입력 | 파서가 고쳐 읽은 구조로 비교하고 textarea도 그 결과로 채워요 |
-| `<script>`, `on*` 입력 | 읽을 때 버려져 textarea에서도 사라져요 |
+| 테스트 영역을 비우고 Patch | 루트만 남아요. 영역 자체는 그대로예요 |
+| 잘못된 중첩 입력 | 파서가 고쳐 읽은 구조로 비교하고 테스트 영역도 그 결과로 채워요 |
+| `<script>`, `on*` 입력 | 읽을 때 버려져 테스트 영역에서도 사라져요 |
 | 사용자가 실제 영역의 폼 값을 바꿈 | VNode에 없는 상태라 비교 대상이 아니에요. 그 노드가 교체되거나 복구되면 VNode 값으로 돌아가요. `textarea`는 그 칸에 `TEXT`가 와도 VNode 값으로 돌아가요([patch.md](patch.md#textarea의-text)) |
 
 ## 테스트
 
 `src/app.test.ts`에서 `node:test`와 `jsdom`으로 확인해요. 구현과 테스트는 [DOM 전역 규칙](virtual-dom.md#dom-전역-규칙)을 따라요.
 
-- 히스토리: 로드 → Patch → Patch → 뒤로 → 앞으로 → 뒤로 → Patch 순서로 실제 영역, textarea 내용, `canGo`, 앞으로가기 기록 잘림, 스냅샷이 같은 객체인지.
+- 히스토리: 로드 → Patch → Patch → 뒤로 → 앞으로 → 뒤로 → Patch 순서로 실제 영역, 테스트 영역 내용, `canGo`, 앞으로가기 기록 잘림, 스냅샷이 같은 객체인지.
 - 시나리오: 위 표의 여섯 단계가 각각 해당 Patch와 DOM 변경 횟수를 내고 자가 검사를 통과하는지. 7단계 후 체크박스와 `select` 상태까지 처음과 같은지. 6–7단계는 key 비교가 필요해서 [단계 10](phase-1-plan.md#순서)에서 추가해요.
-- 실패 복구: 위 입력에서 예외가 전달되고, `history`, 실제 영역, textarea가 위 결과와 같은지. 그 뒤 올바른 입력으로 Patch가 되는지.
-- 잘못된 중첩: 입력 후 textarea가 다시 쓰이는지.
+- 실패 복구: 위 입력에서 예외가 전달되고, `history`, 실제 영역, 테스트 영역이 위 결과와 같은지. 그 뒤 올바른 입력으로 Patch가 되는지.
+- 잘못된 중첩: 입력 후 테스트 영역이 다시 쓰이는지.
 
 `start`와 `startPage`는 `src/verify-page.test.ts`에서 `verify.html`을 jsdom으로 읽어 확인해요. Monaco는 가짜 `require`와 가짜 에디터로 대신해요(불러오기 성공·실패, `create` 실패, 닫는 태그). 로드 직후 상태, Patch 후 로그와 변경 횟수, 뒤로가기·앞으로가기의 두 영역과 버튼 상태, 실패 후 오류 메시지와 다음 성공에서 지워짐, 요소가 없을 때의 `Error`예요.
 
-브라우저 기능 테스트는 #7의 완료 조건이에요. 위 시나리오를 실제 브라우저에서 한 번 돌리고, [다양한 태그 HTML](virtual-dom.md#다양한-태그)을 textarea에 넣어 Patch한 뒤 화면을 눈으로 확인해요(R3-3).
+브라우저 기능 테스트는 #7의 완료 조건이에요. 위 시나리오를 실제 브라우저에서 한 번 돌리고, [다양한 태그 HTML](virtual-dom.md#다양한-태그)을 테스트 영역에 넣어 Patch한 뒤 화면을 눈으로 확인해요(R3-3).
 
 2026-11-09에 Chrome에서 `verify.html`을 열어 실행했어요. textarea 값을 바꾸고 버튼의 `click()`을 부르는 스크립트로 돌렸어요.
 

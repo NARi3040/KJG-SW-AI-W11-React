@@ -203,7 +203,7 @@ Phase 1에 포함하되 마지막에 구현해요. Notion 결정 F는 "key 비�
 | 파일 | 하는 일 |
 |---|---|
 | `verify.html` | 저장소 루트의 페이지예요. [샘플 HTML](verify-page.md#샘플-html)을 담은 실제 영역과 화면 요소, CSS를 두고 Monaco 로더와 `./dist/verify-page.js`의 `startPage(document)`를 불러요 |
-| `src/verify-cases.ts` | [테스트 케이스 목록](verify-page.md#테스트-케이스-목록)의 데이터 `CASES`예요. 각 케이스는 `{ group, name, expect, before?, edit(source, initial) }`이에요. `before`가 있으면 두 단계 케이스이고, `edit`가 `null`이면 적용할 곳이 없다는 뜻이에요 |
+| `src/verify-cases.ts` | [테스트 케이스 목록](verify-page.md#테스트-케이스-목록)의 데이터 `CASES`예요. 필드는 아래 `Case` 표를 봐요 |
 | `src/verify-page.ts` | 시작 코드예요. 요소를 찾아 버튼에 연결하고 결과와 오류를 화면에 써요. `src/index.ts`에서 내보내지 않아요 |
 
 | 함수 | 공개 | 하는 일 | 완료 확인 |
@@ -211,10 +211,22 @@ Phase 1에 포함하되 마지막에 구현해요. Notion 결정 F는 "key 비�
 | `startPage(doc: Document): void` | 공개 | [테스트 영역 에디터](verify-page.md#테스트-영역-에디터)를 불러온 뒤 `start`를 불러요. 실패하거나 10초 안에 끝나지 않으면 textarea로 `start(doc)`. `start`는 한 번만 불러요 | `require`가 없으면 textarea가 `sourceOf(v0)`. 10초가 지나면 textarea로 시작하고 늦게 온 성공은 무시함. 가짜 `require`가 성공하면 가짜 에디터 값이 `sourceOf(v0)`이고 Patch가 그 값을 읽음. 실패하면 textarea |
 | `monacoWorkerUrl(): string` | 공개 | CDN의 `workerMain.js`를 `importScripts`하는 `data:` URL을 돌려줘요 | `data:text/javascript`로 시작하고 0.52.2의 `workerMain.js`를 담음 |
 | `closingTagFor(before: string): string \| null` | 공개 | 커서 앞 텍스트가 여는 태그의 `>`로 끝나면 닫는 태그를 돌려줘요. 아니면 `null` | `"<ul>\n  <li>"` → `"</li>"`. `"<br>"`, `"<b/>"`, `"</b>"`, `"<!-- x -->"`, `"a > b"` → `null` |
-| `start(doc: Document, editor?: Editor): void` | 공개 | 요소를 찾고, `load` 후 버튼 상태를 맞추고, 세 버튼에 `click` 핸들러를 달고, `#cases`에 케이스 버튼을 만들어요. `editor`가 없으면 `#editor` textarea를 써요 | `verify.html`로 만든 문서에서 로드 직후 textarea가 `sourceOf(v0)`이고 두 이동 버튼이 비활성 |
+| `mountMonaco(doc: Document, monaco: Monaco): Editor \| undefined` | 내부 | `#monaco`에 에디터를 만들고 `autoClose`를 연결한 뒤 textarea를 숨기고 `#monaco`를 보여요. `getValue`/`setValue`를 `value`로 감싼 `Editor`를 돌려줘요. `create`가 던지면 `undefined`(textarea로 계속) | 가짜 Monaco에서 `#editor`가 숨겨지고 `#monaco`가 보임. `create`가 던지면 textarea가 `sourceOf(v0)` |
+| `autoClose(editor: MonacoEditor, event: ContentChange): void` | 내부 | 되돌리기·다시 실행·`setValue`가 아니고 바뀐 내용이 `>` 한 글자일 때만 `closingTagFor`로 닫는 태그를 구해요. `pushUndoStop` 후 `executeEdits`로 커서 뒤에 넣고 커서는 그대로 둬요 | `<p` 뒤에 `>`를 치면 `<p></p>`, 커서는 4열, undo stop 1번. `isUndoing`·`isRedoing`·`isFlush`이거나 바뀐 곳이 둘이면 그대로 |
+| `start(doc: Document, editor?: Editor): void` | 공개 | 요소를 찾고, `load` 후 버튼 상태를 맞추고, 세 버튼에 `click` 핸들러를 달고, `#cases`에 케이스 버튼을 묶음별로 만들어요. `editor`가 없으면 `#editor` textarea를 써요 | `verify.html`로 만든 문서에서 로드 직후 textarea가 `sourceOf(v0)`이고 두 이동 버튼이 비활성. `#cases`에 `CASES` 수만큼 버튼이 묶음 순서대로 생기고, 누르면 테스트 영역과 `#case-note`가 바뀜 |
+| `pick(item: Case): void` | 내부 | 케이스 버튼의 핸들러예요. Patch는 하지 않아요. 두 단계 케이스는 `sourceOf(history.stack[history.index])`가 `sourceOf(fromHTML(before))`와 다르면 `before`를 채우고 `(1/2)`를, 같으면 `edit` 결과와 `expect`를 `(2/2)`로 써요. `edit`가 `null`이면 테스트 영역을 그대로 두고 `#error`에 "적용할 곳이 없어요"를 써요 | 두 단계 케이스 19개가 두 번째 단계에서 기대한 Patch 종류, DOM 변경 횟수, 콘솔 경고 수를 냄. 시연 5단계를 처음 상태에서 누르면 테스트 영역은 그대로이고 오류. 뒤로가기로 시작 상태를 벗어나면 다시 `(1/2)` |
 | `byId(doc: Document, id: string, tag: string): Element` | 내부 | `id`로 찾고 `tagName`이 맞는지 확인해요. 없거나 다르면 `id`를 담은 `Error`를 던져요 | `#log`가 없는 문서에서 `start`가 `#log`를 담은 `Error`를 던짐 |
 | `run(action: () => Patch[] \| null): void` | 내부 | `countMutations(real, action)`로 실행해 로그와 변경 횟수를 쓰고 오류를 지워요. 예외가 나면 메시지만 `#error`에 써요. 끝나면 `canGo`로 버튼 상태를 맞춰요 | Patch 후 로그가 Patch당 한 줄([verify-page.md의 화면](verify-page.md#화면)), 변경 횟수가 `1`. Patch 5개면 5줄, 없으면 `변경 없음`. 실패 후 `#error`에 메시지, 다음 성공에서 지워짐 |
 
+`Case`는 `src/verify-cases.ts`의 케이스 하나예요. 버튼 하나가 케이스 하나예요.
+
+| 필드 | 형식 | 뜻 | 예 |
+|---|---|---|---|
+| `group` | `string` | 버튼 묶음 제목. 같은 값끼리 한 줄에 모이고, 처음 나온 순서대로 놓여요 | `"key 비교"` |
+| `name` | `string` | 버튼 글자. `#case-note`의 앞에도 써요 | `"중복 key"` |
+| `expect` | `string` | 기대 결과. 버튼의 `title`과 `#case-note`에 써요 | `"MOVE + CREATE, DOM 변경 3"` |
+| `before` | `string` 또는 없음 | 있으면 두 단계 케이스의 시작 상태 HTML이에요 | `keyed("a:1 b")` |
+| `edit(source, initial)` | `(string, string) => string \| null` | 테스트 영역에 넣을 새 내용을 돌려줘요. `source`는 버튼을 누를 때 테스트 영역의 현재 내용, `initial`은 로드 때의 `sourceOf(v0)`예요. `null`이면 적용할 곳이 없다는 뜻이에요 | 시연 1단계는 `source`의 `정글러`를 `나리`로 바꾸고, 없으면 `null`. "처음 샘플"은 `initial`을 돌려줘요. 두 단계 케이스는 `source`를 보지 않고 바뀐 상태를 돌려줘요 |
 
 ## 담당 사이의 약속
 
