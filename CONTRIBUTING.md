@@ -79,7 +79,7 @@ feat: VNode 생성 함수 추가
 ### AI 리뷰
 
 - 문서는 [문서 작성 원칙](docs/technical-writing-principles.md)에 맞춰 써요.
-- 모든 PR은 Claude가 리뷰하고, 리뷰 봇(`giga-deepseek[bot]`)이 결과를 PR 리뷰로 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
+- 포크에서 온 PR을 뺀 모든 PR은 Claude가 리뷰하고, 리뷰 봇(`giga-deepseek[bot]`)이 결과를 PR 리뷰로 남겨요. Draft PR은 Ready for review로 바꿀 때 리뷰해요.
 - `.md` 파일이 바뀌면 문서 작성 원칙으로, 코드가 바뀌면 `AGENTS.md`의 구현 제약, `docs/design/` 설계 문서와의 일치, 버그와 엣지 케이스 누락, 테스트 없는 동작 변경을 봐요.
 - 코드가 바뀐 PR은 CI가 끝나기를 최대 5분 기다리고, CI가 실패하면 로그 일부를 읽어서 이 PR 때문인지 판단해요.
 - 코드와 CI 로그 일부도 Anthropic API로 전송돼요. CI 로그에 비밀 값을 출력하지 않아요.
@@ -89,7 +89,7 @@ feat: VNode 생성 함수 추가
 - PR을 열면 전체를 리뷰하고, push하면 마지막 리뷰 이후 바뀐 부분만 리뷰해요. 이전 리뷰의 스레드 중 이번 push로 반영된 것은 봇이 답글을 달고 닫아요.
 - 전체를 다시 리뷰받으려면 PR에 `giga-deepseek` 라벨을 붙여요. 이미 붙어 있으면 뗐다가 다시 붙여요. PR 댓글에 `@giga-deepseek review`를 적어도 돼요.
 - PR 댓글이나 리뷰 코멘트 답글에 `@giga-deepseek`와 질문을 적으면 봇이 답글을 달아요. 저장소 멤버의 댓글에만 답하고, 파일을 고치거나 스레드를 닫지는 않아요.
-- 리뷰 코멘트 답글의 멘션은 PR 브랜치에 `.github/workflows/docs-review-reply.yml`이 있어야 동작해요. 이 파일이 `main`에 머지되기 전에 만든 브랜치는 `main`을 머지해요.
+- 멘션 답글은 `.github/workflows/docs-review-reply.yml`로 실행돼요. PR 댓글의 멘션은 `main`에 있는 이 파일로, 리뷰 코멘트 답글의 멘션은 PR 브랜치에 있는 이 파일로 실행돼요. 이 파일이 `main`에 들어가기 전에 만든 브랜치에서 리뷰 코멘트 답글로 부르려면 `main`을 머지해요.
 - 포크에서 온 PR은 리뷰하지 않고, 멘션에도 답하지 않아요.
 - Claude의 코멘트는 참고용이에요. 반영 여부는 작성자와 리뷰어가 정하고, 사람 1명의 승인은 그대로 필요해요.
 
@@ -140,7 +140,7 @@ TypeScript를 사용해요.
 
 ## GitHub 초기 설정
 
-저장소 관리자가 한 번만 실행해요. 브랜치 보호는 `.github/workflows/ci.yml`이 포함된 첫 커밋을 `main`에 push한 뒤에 설정해요. `giga-deepseek` 라벨을 포함한 모든 라벨은 저장소에 이미 만들어져 있어요. 저장소를 새로 설정할 때 `giga-deepseek` 라벨은 아래 [AI 리뷰](#ai-리뷰-1)의 명령으로 만들어요.
+저장소 관리자가 한 번만 실행해요. 브랜치 보호는 `.github/workflows/ci.yml`이 포함된 첫 커밋을 `main`에 push한 뒤에 설정해요. 라벨은 `giga-deepseek`까지 모두 저장소에 만들어져 있어요. 아래 [AI 리뷰](#ai-리뷰-1)의 `gh label create` 명령은 저장소를 새로 만들 때만 실행해요.
 
 ### `main` 브랜치 보호 설정
 
@@ -187,7 +187,7 @@ gh secret set DOCS_REVIEW_APP_PRIVATE_KEY -R NARi3040/KJG-SW-AI-W11-React < 키�
 gh variable set DOCS_REVIEW_APP_CLIENT_ID -R NARi3040/KJG-SW-AI-W11-React --body "Iv23..."
 ```
 
-전체를 다시 리뷰받을 때 붙이는 `giga-deepseek` 라벨을 만들어요.
+저장소를 새로 만들 때는 전체를 다시 리뷰받을 때 붙이는 `giga-deepseek` 라벨도 만들어요.
 
 ```bash
 gh label create giga-deepseek -R NARi3040/KJG-SW-AI-W11-React -c 5319E7 -d "AI 리뷰를 처음부터 다시 받아요"
