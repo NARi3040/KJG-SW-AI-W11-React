@@ -140,7 +140,7 @@ TypeScript를 사용해요.
 
 ## GitHub 초기 설정
 
-저장소 관리자가 한 번만 실행해요. 브랜치 보호는 `.github/workflows/ci.yml`이 포함된 첫 커밋을 `main`에 push한 뒤에 설정해요. 라벨은 `giga-deepseek`까지 모두 저장소에 만들어져 있어요. 아래 [AI 리뷰](#ai-리뷰-1)의 `gh label create` 명령은 저장소를 새로 만들 때만 실행해요.
+저장소 관리자가 한 번만 실행해요. 브랜치 보호는 `.github/workflows/ci.yml`이 포함된 첫 커밋을 `main`에 push한 뒤에 설정해요. `giga-deepseek`을 포함해 라벨은 모두 저장소에 만들어져 있어요. 아래 [AI 리뷰](#ai-리뷰-1)의 `gh label create` 명령은 저장소를 새로 만들 때만 실행해요.
 
 ### `main` 브랜치 보호 설정
 
