@@ -27,7 +27,7 @@
 
 과제 요구사항이므로 설계 문서가 달리 적어도 어기지 않아요. 충돌하면 담당자에게 물어요.
 
-- 프로덕션 코드는 HTML, CSS, TypeScript만 사용해요. React, Vue 같은 외부 프레임워크는 쓰지 않아요.
+- 프로덕션 코드는 HTML, CSS, TypeScript만 사용해요. React, Vue 같은 외부 프레임워크는 쓰지 않아요. 예외는 검증 페이지 테스트 영역의 Monaco 에디터 하나예요([verify-page.md](docs/design/verify-page.md#테스트-영역-에디터)).
 - 상대 경로 import에는 `import { x } from "./a.ts"`처럼 `.ts` 확장자를 붙여요. 빠지면 타입 검사가 실패해요.
 - 컴포넌트는 함수형으로만 만들어요.
 - Hook과 상태는 루트 컴포넌트에서만 사용해요.

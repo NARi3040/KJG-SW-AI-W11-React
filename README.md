@@ -42,7 +42,11 @@ npm run build
 python3 -m http.server 8000   # http://localhost:8000/verify.html
 ```
 
-`verify.html`은 Virtual DOM 검증 페이지예요. 실제 영역과 테스트 영역(textarea)을 나란히 두고, Patch·뒤로가기·앞으로가기 결과를 Patch 로그와 DOM 변경 횟수로 보여 줘요.
+8000번 포트를 다른 프로그램이 쓰고 있으면 다른 번호로 열어요.
+
+`verify.html`은 Virtual DOM 검증 페이지예요. 실제 영역과 테스트 영역을 나란히 두고, Patch·뒤로가기·앞으로가기 결과를 Patch 로그와 DOM 변경 횟수로 보여 줘요. 위쪽의 케이스 버튼으로 시연과 엣지 케이스를 테스트 영역에 넣을 수 있어요.
+
+테스트 영역은 Monaco 에디터예요. CDN에서 불러오므로 인터넷 연결이 필요하고, 연결이 없거나 불러오지 못하면 textarea로 동작해요.
 
 VS Code의 Live Server 같은 다른 정적 서버를 써도 돼요.
 

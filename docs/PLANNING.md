@@ -6,7 +6,7 @@
 |---|---|
 | 출처 | [LMS 미니 리액트 구현](https://jungle-lms.krafton.com/learning/1258) (2026-11-06 확인, 로그인 필요) |
 | 구현 언어 | TypeScript |
-| 제한 | HTML, CSS, TypeScript만 사용. React, Vue 같은 외부 프레임워크 금지 |
+| 제한 | HTML, CSS, TypeScript만 사용. React, Vue 같은 외부 프레임워크 금지. 예외: 검증 페이지 테스트 영역의 코드 에디터 [Monaco](design/verify-page.md#테스트-영역-에디터) (2026-11-10 담당자 결정) |
 
 이 문서는 LMS 내용을 요약한 거예요. 해석이 갈리면 LMS 원문을 따라요. 구현 설계는 `docs/design/`에 따로 작성해요.
 
