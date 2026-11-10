@@ -2,7 +2,7 @@ name: AI 리뷰
 
 on:
   pull_request:
-    types: [opened, ready_for_review, reopened]
+    types: [opened, synchronize, ready_for_review, reopened, labeled]
 
 concurrency:
   group: ai-review-${{ github.event.pull_request.number }}
@@ -10,8 +10,13 @@ concurrency:
 
 jobs:
   review:
-    # 리뷰 봇 앱을 설정하기 전에는 건너뛰어요.
-    if: github.event.pull_request.draft == false && vars.DOCS_REVIEW_APP_CLIENT_ID != ''
+    # push(synchronize)는 바뀐 부분만, 나머지 이벤트는 전체를 리뷰해요. 라벨은 docs-review일 때만 실행해요.
+    # 포크 PR에는 시크릿이 없어서 건너뛰고, 리뷰 봇 앱을 설정하기 전에도 건너뛰어요.
+    if: >-
+      github.event.pull_request.draft == false &&
+      (github.event.action != 'labeled' || github.event.label.name == 'docs-review') &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      vars.DOCS_REVIEW_APP_CLIENT_ID != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -22,16 +27,22 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
       # docs-review는 비공개 저장소라 공개 저장소에서 바로 uses로 부를 수 없어요.
-      # 앱 토큰으로 체크아웃해 로컬 액션으로 실행하고, 같은 토큰으로 리뷰를 게시해요.
-      - id: app-token
+      # 읽기 전용 앱 토큰으로 체크아웃해 로컬 액션으로 실행해요.
+      - id: action-token
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ vars.DOCS_REVIEW_APP_CLIENT_ID }}
           private-key: ${{ secrets.DOCS_REVIEW_APP_PRIVATE_KEY }}
-          repositories: |
-            ${{ github.event.repository.name }}
-            docs-review
+          repositories: docs-review
           permission-contents: read
+      # 리뷰를 게시하는 토큰이에요. 반영된 스레드를 닫으려면 Contents 쓰기가 필요해서, 이 저장소에만 줘요.
+      - id: review-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DOCS_REVIEW_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DOCS_REVIEW_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
           permission-pull-requests: write
           permission-checks: read
           permission-actions: read
@@ -39,10 +50,10 @@ jobs:
         with:
           repository: NARi3040/docs-review
           ref: v2.0.0-rc.4
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.action-token.outputs.token }}
           path: .docs-review-action
       - uses: ./.docs-review-action
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           instructions-path: .github/docs-review.md
-          github-token: ${{ steps.app-token.outputs.token }}
+          github-token: ${{ steps.review-token.outputs.token }}

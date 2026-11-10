@@ -1,0 +1,55 @@
+name: AI 리뷰 답글
+
+# PR 댓글(issue_comment)은 기본 브랜치의 이 파일로, 리뷰 코멘트 답글(pull_request_review_comment)은 PR 브랜치의 이 파일로 실행돼요.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  reply:
+    # 저장소 멤버가 PR에서 @docs-review를 적었을 때만 실행해요. 액션도 같은 조건을 다시 확인해요.
+    if: >-
+      contains(github.event.comment.body, '@docs-review') &&
+      (github.event.issue.pull_request || github.event.pull_request) &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
+      vars.DOCS_REVIEW_APP_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      # 댓글 이벤트의 체크아웃 기본값은 PR head가 아니라서 직접 지정해요.
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/pull/${{ github.event.issue.number || github.event.pull_request.number }}/head
+          fetch-depth: 1
+      - id: action-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DOCS_REVIEW_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DOCS_REVIEW_APP_PRIVATE_KEY }}
+          repositories: docs-review
+          permission-contents: read
+      - id: review-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DOCS_REVIEW_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DOCS_REVIEW_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: read
+          permission-pull-requests: write
+          permission-checks: read
+          permission-actions: read
+      - uses: actions/checkout@v7
+        with:
+          repository: NARi3040/docs-review
+          ref: v2.0.0-rc.4
+          token: ${{ steps.action-token.outputs.token }}
+          path: .docs-review-action
+      - uses: ./.docs-review-action
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          instructions-path: .github/docs-review.md
+          github-token: ${{ steps.review-token.outputs.token }}
