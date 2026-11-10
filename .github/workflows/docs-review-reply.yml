@@ -10,9 +10,9 @@ on:
 jobs:
   # 포크 PR이면 시크릿을 가진 채 포크 코드를 체크아웃하지 않도록, 토큰 발급 전에 여기서 걸러요.
   check:
-    # 저장소 멤버가 PR에서 @docs-review를 적었을 때만 실행해요. 액션도 같은 조건을 다시 확인해요.
+    # 저장소 멤버가 PR에서 @giga-deepseek를 적었을 때만 실행해요. 액션도 같은 조건을 다시 확인해요.
     if: >-
-      contains(github.event.comment.body, '@docs-review') &&
+      contains(github.event.comment.body, '@giga-deepseek') &&
       (github.event.issue.pull_request || github.event.pull_request) &&
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
       vars.DOCS_REVIEW_APP_CLIENT_ID != ''
@@ -75,4 +75,5 @@ jobs:
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           instructions-path: .github/docs-review.md
+          mention: "@giga-deepseek"
           github-token: ${{ steps.review-token.outputs.token }}

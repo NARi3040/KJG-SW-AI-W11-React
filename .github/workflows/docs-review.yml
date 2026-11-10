@@ -10,11 +10,11 @@ concurrency:
 
 jobs:
   review:
-    # push(synchronize)는 바뀐 부분만, 나머지 이벤트는 전체를 리뷰해요. 라벨은 docs-review일 때만 실행해요.
+    # push(synchronize)는 바뀐 부분만, 나머지 이벤트는 전체를 리뷰해요. 라벨은 giga-deepseek일 때만 실행해요.
     # 포크 PR에는 시크릿이 없어서 건너뛰고, 리뷰 봇 앱을 설정하기 전에도 건너뛰어요.
     if: >-
       github.event.pull_request.draft == false &&
-      (github.event.action != 'labeled' || github.event.label.name == 'docs-review') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'giga-deepseek') &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       vars.DOCS_REVIEW_APP_CLIENT_ID != ''
     runs-on: ubuntu-latest
