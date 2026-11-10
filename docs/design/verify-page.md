@@ -114,12 +114,14 @@ Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이�
 
 ## 화면
 
-`npm run build` 후 저장소 루트에서 로컬 서버를 열고 `/verify.html`로 들어가요. 페이지는 `./dist/verify-page.js`의 `start(document)`를 불러요.
+`npm run build` 후 저장소 루트에서 로컬 서버를 열고 `/verify.html`로 들어가요. 페이지는 `./dist/verify-page.js`의 `startPage(document)`를 불러요.
 
 ```text
+테스트 케이스 #cases: [1. 텍스트] [2. 속성] … [다양한 태그] …
+#case-note  고른 케이스의 기대 결과
 ┌──────────────────┬──────────────────┐
 │ 실제 영역 #real   │ 테스트 영역       │
-│                  │ #editor          │
+│                  │ #monaco (#editor)│
 └──────────────────┴──────────────────┘
 [Patch #patch] [뒤로가기 #back] [앞으로가기 #forward]  DOM 변경 #mutations
 #error  오류 메시지
@@ -128,8 +130,11 @@ Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이�
 
 | `id` | 요소 | 내용 |
 |---|---|---|
+| `cases` | `nav` | [테스트 케이스](#테스트-케이스-목록) 버튼을 `start`가 채워요 |
+| `case-note` | `p` | 마지막으로 누른 케이스의 이름과 기대 결과 |
 | `real` | `div` | 실제 영역. 처음에는 [샘플 HTML](#샘플-html)을 담아요 |
-| `editor` | `textarea` | 테스트 영역 |
+| `editor` | `textarea` | 테스트 영역. Monaco를 불러오면 숨겨요 |
+| `monaco` | `div` | [Monaco](#테스트-영역-에디터)를 그릴 자리. 처음에는 `hidden`이고 Monaco를 불러오면 보여요 |
 | `patch`, `back`, `forward` | `button` | `onPatch`, `go(-1)`, `go(1)`. 이동 버튼은 `canGo`가 `false`면 `disabled` |
 | `mutations` | `output` | 마지막으로 성공한 동작의 `countMutations` 값 |
 | `error` | `p` | 마지막 동작의 예외 메시지. 성공하면 비워요 |
@@ -138,6 +143,68 @@ Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이�
 - 동작이 실패하면 `#error`만 바꾸고 로그와 변경 횟수는 그대로 둬요. 실패한 동작의 변경 횟수는 복구까지 섞여서 의미가 없어요.
 - 이동할 수 없을 때 버튼은 비활성이라 `go`의 `null`은 화면에서 생기지 않아요. 생기면 `#error`, `#log`, `#mutations` 모두 이전 값 그대로 둬요.
 - 너비가 720px보다 좁으면 두 영역을 위아래로 쌓아요.
+
+### 테스트 케이스 목록
+
+시연과 브라우저 확인을 손으로 입력하지 않고 할 수 있게 케이스를 묶음별 버튼으로 둬요. PR #45–#56 본문의 엣지 케이스와 리뷰에서 지적받은 케이스 중 테스트 영역 입력으로 만들 수 있는 것을 모았어요. 버튼은 테스트 영역의 내용만 바꾸고 Patch는 하지 않아요. 바뀐 내용을 보고 Patch를 누르게 하기 위해서예요. 케이스는 `src/verify-cases.ts`의 `CASES`예요.
+
+- **한 단계 케이스**: 누르면 테스트 영역을 바꾸고 `#case-note`에 기대 결과를 써요.
+- **두 단계 케이스**(`before`가 있음): 현재 스냅샷의 `sourceOf`가 `sourceOf(fromHTML(before))`와 다르면 `before`를 채우고 `(1/2)`를 써요. 같으면 바뀐 상태를 채우고 `(2/2)`와 기대 결과를 써요. 그래서 "누르기 → Patch → 다시 누르기 → Patch" 순서로 써요.
+- 시연 1–6은 바로 앞 단계를 Patch한 뒤에 눌러요. 바꿀 문자열이 없으면 내용을 그대로 두고 `#error`에 "적용할 곳이 없어요"를 써요. 다른 케이스를 누르면 `#error`를 비워요.
+
+| 묶음 | 버튼 | 바뀌는 입력 | 기대 결과 |
+|---|---|---|---|
+| 시연 | 1–6 | [시연 시나리오](#시연-시나리오)의 1–6단계 | 시나리오 표와 같아요 |
+| 시연 | 처음 샘플 | 로드 때의 `sourceOf(v0)` | 처음 상태로 돌아가는 Patch |
+| Patch | 형제 여러 개 삭제 | key 목록 `a b c d` → `a d` | `REMOVE [0, 2]`, `[0, 1]`, DOM 변경 2 |
+| Patch | 이동 + 삭제 | `a b c d` → `c a` | `REMOVE` 2개 + `MOVE`, DOM 변경 4 |
+| Patch | 텍스트 → 요소 | `<p>a</p>` → `<p><b>a</b></p>` | `TEXT`(빈 값) + `CREATE`, DOM 변경 2 |
+| Patch | 요소 → 텍스트 | `<p><b>a</b><i>b</i></p>` → `<p>ab</p>` | `REMOVE` 2개가 `TEXT`보다 먼저, DOM 변경 3 |
+| Patch | 요소 → 비어 있음 | `<p><b>a</b></p>` → `<p></p>` | `REMOVE`, DOM 변경 1 |
+| Patch | 비어 있음 → 텍스트 | `<p></p>` → `<p>a</p>` | `TEXT`, DOM 변경 1 |
+| Patch | 입력한 textarea | `<textarea>메모</textarea>` → `할 일` | `TEXT`, DOM 변경 1. 실제 영역 textarea에 입력한 값도 `할 일`이 돼요 |
+| 위치 비교 | 텍스트 ↔ 요소 | `<b>x</b>a` → `<b>x</b><i>a</i>` | `REPLACE [1]`, DOM 변경 1 |
+| 위치 비교 | 속성 값만 다름 | `<p id="a" title="x">` → `<p id="b">` | `PROPS` 하나, 속성마다 DOM 변경 1이라 2 |
+| key 비교 | key만 다름 | `a:x` → `b:x` | `REMOVE` + `CREATE`, DOM 변경 2 |
+| key 비교 | 같은 key, 다른 태그 | `li` `b` → `p` `b` | `REMOVE` + `CREATE`, DOM 변경 2 |
+| key 비교 | 옮긴 노드의 내용 변경 | `a b c` → `c(내용 C) a b` | `TEXT [0, 2]`가 `MOVE`보다 먼저, DOM 변경 3 |
+| key 비교 | key 있음·없음 섞임 | `a x b` → `b x a`(`x`는 key 없음) | `MOVE` 2개, DOM 변경 4 |
+| key 비교 | 중복 key | `a b` → `b a a` | 콘솔 경고 1번, `MOVE` + 뒤의 `a`만 `CREATE`, DOM 변경 3 |
+| key 비교 | 공통 구간의 중복 key | `x(1) x(2) z` → `z x(1)` | 경고 없음, 두 번째 `x`는 `REMOVE`, `z`는 `MOVE`, DOM 변경 3 (PR #50 리뷰) |
+| key 비교 | 빈 data-key | `""` `b` → `b` `""` | `data-key=""`도 key라 `MOVE` 1개, DOM 변경 2 (PR #48 리뷰) |
+| 읽기·속성 | file 입력 type 변경 | `<input type="text" value="a">` → file input 두 개 | 첫 input은 `PROPS`(type → file), 둘째는 `CREATE`. 오류 없음, DOM 변경 2 (PR #52 리뷰의 복구 실패 재현) |
+| 읽기·속성 | 이상한 속성 이름 | `<p x"y="1" =z="2">a</p>` | `x"y`는 그대로 그려지고 `=`로 시작하는 속성은 버려져요. 오류 없음 (PR #52 리뷰) |
+| 읽기·속성 | 새 option + select 값 | option 하나 → 둘(`B` 선택) | `PROPS` + `CREATE`, DOM 변경 2. select 값이 `b` |
+| 읽기·속성 | class 삭제 | `<p class="x">` → `<p>` | `PROPS` remove `class`, DOM 변경 1. 빈 `class=""` 없음 |
+| 읽기·속성 | 주석·&nbsp; | `<p>a<!-- 주석 -->b&nbsp;c</p>` | 주석은 버리고 양옆을 합쳐요. `&nbsp;`는 U+00A0 문자로 남아요 |
+| 읽기·속성 | key와 data-key | `<li key="x" data-key="y">` | `key` 속성은 버려지고 `data-key`가 key |
+| 읽기·속성 | style·checked·progress | `style` 문자열, `checked=""`, `progress value="abc"` | 오류 없음, 체크박스 켜짐 |
+| 기타 | 다양한 태그 | [다양한 태그 HTML](virtual-dom.md#다양한-태그) | 오류 없음. `range` 250, 체크박스 켜짐, `select` Y, `output` 안 `b`는 "출력" |
+| 기타 | 잘못된 중첩 | `<p>a<div>b</div></p>` | 파서가 고친 구조로 비교하고 테스트 영역을 다시 채워요 |
+| 기타 | script·on* | `<p onclick>`과 `<script>` | 둘 다 버려져 테스트 영역에서도 사라져요 |
+| 기타 | 변경 없음 | 그대로 | Patch 없음, 히스토리에는 추가 |
+| 기타 | 비우기 | 빈 문자열 | 루트만 남아요 |
+
+key 목록은 `<ul>` 안의 `<li data-key="…">`예요. `c(내용 C)`처럼 적지 않으면 내용은 key와 같아요.
+
+페이지로 보여 줄 수 없는 엣지 케이스(VNode 정규화, `Object.freeze`, 999겹 중첩, `lis`, 어긋난 경로, 컴포넌트 VNode, `checked`에 객체 값(PR #49 리뷰), 실제 영역이 VNode와 어긋난 뒤의 복구와 `go` 실패(PR #52 리뷰), 무작위 입력)는 각 `*.test.ts`에서만 확인해요. HTML 입력으로는 그런 값이나 상태를 만들 수 없어요.
+
+### 테스트 영역 에디터
+
+테스트 영역은 VS Code의 에디터인 [Monaco](https://github.com/microsoft/monaco-editor)로 보여요. 문법 강조와 태그 자동완성(제안 목록)을 쓰기 위해서예요. [과제 제한](../PLANNING.md)(HTML, CSS, TypeScript만 사용)의 예외로, 2026-11-10에 담당자(박준호)가 정했어요. Virtual DOM, Diff, Patch와 히스토리에는 쓰지 않아요.
+
+| 항목 | 내용 |
+|---|---|
+| 불러오기 | `verify.html`이 jsdelivr의 `monaco-editor@0.52.2/min/vs/loader.js`를 `defer`로 불러요. npm 의존성은 추가하지 않아요. 번들러 없이 `tsc`만 쓰기 때문이에요 |
+| 무결성 | `loader.js`에는 SRI(`integrity`)를 붙여요. 로더가 나중에 불러오는 `editor.main.js`와 워커는 SRI로 보호하지 못해요. 로컬 시연 페이지라 버전 고정으로 받아들여요 |
+| 버전 | 0.52.2로 고정해요. 0.53 이후는 빌드 구조가 바뀌어 CDN에서 워커를 불러오는 방식이 확인되지 않았어요 |
+| 워커 | 다른 출처의 워커는 바로 만들 수 없어서, `MonacoEnvironment.getWorkerUrl`이 CDN의 `workerMain.js`를 `importScripts`하는 `data:` URL을 돌려줘요 |
+| `Editor` 연결 | `getValue`, `setValue`로 `value`를 읽고 쓰는 객체를 `start(doc, editor)`에 넘겨요. `app.ts`는 바꾸지 않아요 |
+| 닫는 태그 | Monaco는 HTML 닫는 태그를 자동으로 넣지 않아요. 내용 변경이 `>` 한 글자면 `closingTagFor`로 닫는 태그를 구해 `executeEdits`로 커서 뒤에 넣고 커서는 그 앞에 둬요. `<li>`를 치면 `<li>\|</li>`가 돼요(`\|`는 커서). [빈 요소](https://html.spec.whatwg.org/multipage/syntax.html#void-elements)와 `/>`로 끝난 태그, 닫는 태그, 주석은 건너뛰어요. 되돌리기·다시 실행과 `setValue`로 바뀐 내용에는 반응하지 않아요. 넣기 전에 `pushUndoStop`을 불러서 Ctrl+Z 한 번에 넣은 닫는 태그만 지워져요. 한계: 이미 닫힌 태그의 `>`를 지웠다가 다시 치거나, 속성 값·주석 안에서 `>`를 쳐도 닫는 태그가 들어가요. 막으려면 HTML을 파싱해야 해서 하지 않았어요 |
+| 불러오기 실패 | 로더가 없거나(`require`가 함수가 아님) 에디터 모듈을 못 불러오거나 `create`가 던지거나 10초(`MONACO_TIMEOUT_MS`) 안에 끝나지 않으면 textarea로 `start(doc)`를 불러요. `start`는 한 번만 불러요 |
+
+- Monaco를 불러오기 전에는 버튼에 핸들러가 없어요. 늦어도 10초 뒤에는 동작해요.
+- 인터넷 연결이 없으면 textarea로 동작해요.
 
 ## 엣지 케이스
 
@@ -160,7 +227,7 @@ Patch 도중 예외가 나면 실제 영역이 절반만 바뀐 채 남아 이�
 - 실패 복구: 위 입력에서 예외가 전달되고, `history`, 실제 영역, textarea가 위 결과와 같은지. 그 뒤 올바른 입력으로 Patch가 되는지.
 - 잘못된 중첩: 입력 후 textarea가 다시 쓰이는지.
 
-`start`는 `src/verify-page.test.ts`에서 `verify.html`을 jsdom으로 읽어 확인해요. 로드 직후 상태, Patch 후 로그와 변경 횟수, 뒤로가기·앞으로가기의 두 영역과 버튼 상태, 실패 후 오류 메시지와 다음 성공에서 지워짐, 요소가 없을 때의 `Error`예요.
+`start`와 `startPage`는 `src/verify-page.test.ts`에서 `verify.html`을 jsdom으로 읽어 확인해요. Monaco는 가짜 `require`와 가짜 에디터로 대신해요(불러오기 성공·실패, `create` 실패, 닫는 태그). 로드 직후 상태, Patch 후 로그와 변경 횟수, 뒤로가기·앞으로가기의 두 영역과 버튼 상태, 실패 후 오류 메시지와 다음 성공에서 지워짐, 요소가 없을 때의 `Error`예요.
 
 브라우저 기능 테스트는 #7의 완료 조건이에요. 위 시나리오를 실제 브라우저에서 한 번 돌리고, [다양한 태그 HTML](virtual-dom.md#다양한-태그)을 textarea에 넣어 Patch한 뒤 화면을 눈으로 확인해요(R3-3).
 

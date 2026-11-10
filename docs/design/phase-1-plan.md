@@ -202,12 +202,16 @@ Phase 1에 포함하되 마지막에 구현해요. Notion 결정 F는 "key 비�
 
 | 파일 | 하는 일 |
 |---|---|
-| `verify.html` | 저장소 루트의 페이지예요. [샘플 HTML](verify-page.md#샘플-html)을 담은 실제 영역과 화면 요소, CSS를 두고 `./dist/verify-page.js`의 `start(document)`를 불러요 |
+| `verify.html` | 저장소 루트의 페이지예요. [샘플 HTML](verify-page.md#샘플-html)을 담은 실제 영역과 화면 요소, CSS를 두고 Monaco 로더와 `./dist/verify-page.js`의 `startPage(document)`를 불러요 |
+| `src/verify-cases.ts` | [테스트 케이스 목록](verify-page.md#테스트-케이스-목록)의 데이터 `CASES`예요. 각 케이스는 `{ group, name, expect, before?, edit(source, initial) }`이에요. `before`가 있으면 두 단계 케이스이고, `edit`가 `null`이면 적용할 곳이 없다는 뜻이에요 |
 | `src/verify-page.ts` | 시작 코드예요. 요소를 찾아 버튼에 연결하고 결과와 오류를 화면에 써요. `src/index.ts`에서 내보내지 않아요 |
 
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
-| `start(doc: Document): void` | 공개 | 요소를 찾고, `load` 후 버튼 상태를 맞추고, 세 버튼에 `click` 핸들러를 달아요 | `verify.html`로 만든 문서에서 로드 직후 textarea가 `sourceOf(v0)`이고 두 이동 버튼이 비활성 |
+| `startPage(doc: Document): void` | 공개 | [테스트 영역 에디터](verify-page.md#테스트-영역-에디터)를 불러온 뒤 `start`를 불러요. 실패하거나 10초 안에 끝나지 않으면 textarea로 `start(doc)`. `start`는 한 번만 불러요 | `require`가 없으면 textarea가 `sourceOf(v0)`. 10초가 지나면 textarea로 시작하고 늦게 온 성공은 무시함. 가짜 `require`가 성공하면 가짜 에디터 값이 `sourceOf(v0)`이고 Patch가 그 값을 읽음. 실패하면 textarea |
+| `monacoWorkerUrl(): string` | 공개 | CDN의 `workerMain.js`를 `importScripts`하는 `data:` URL을 돌려줘요 | `data:text/javascript`로 시작하고 0.52.2의 `workerMain.js`를 담음 |
+| `closingTagFor(before: string): string \| null` | 공개 | 커서 앞 텍스트가 여는 태그의 `>`로 끝나면 닫는 태그를 돌려줘요. 아니면 `null` | `"<ul>\n  <li>"` → `"</li>"`. `"<br>"`, `"<b/>"`, `"</b>"`, `"<!-- x -->"`, `"a > b"` → `null` |
+| `start(doc: Document, editor?: Editor): void` | 공개 | 요소를 찾고, `load` 후 버튼 상태를 맞추고, 세 버튼에 `click` 핸들러를 달고, `#cases`에 케이스 버튼을 만들어요. `editor`가 없으면 `#editor` textarea를 써요 | `verify.html`로 만든 문서에서 로드 직후 textarea가 `sourceOf(v0)`이고 두 이동 버튼이 비활성 |
 | `byId(doc: Document, id: string, tag: string): Element` | 내부 | `id`로 찾고 `tagName`이 맞는지 확인해요. 없거나 다르면 `id`를 담은 `Error`를 던져요 | `#log`가 없는 문서에서 `start`가 `#log`를 담은 `Error`를 던짐 |
 | `run(action: () => Patch[] \| null): void` | 내부 | `countMutations(real, action)`로 실행해 로그와 변경 횟수를 쓰고 오류를 지워요. 예외가 나면 메시지만 `#error`에 써요. 끝나면 `canGo`로 버튼 상태를 맞춰요 | Patch 후 로그가 Patch당 한 줄([verify-page.md의 화면](verify-page.md#화면)), 변경 횟수가 `1`. Patch 5개면 5줄, 없으면 `변경 없음`. 실패 후 `#error`에 메시지, 다음 성공에서 지워짐 |
 
