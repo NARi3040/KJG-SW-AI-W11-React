@@ -83,6 +83,7 @@ feat: VNode 생성 함수 추가
 - `.md` 파일이 바뀌면 문서 작성 원칙으로, 코드가 바뀌면 `AGENTS.md`의 구현 제약, `docs/design/` 설계 문서와의 일치, 버그와 엣지 케이스 누락, 테스트 없는 동작 변경을 봐요.
 - 코드가 바뀐 PR은 CI가 끝나기를 최대 5분 기다리고, CI가 실패하면 로그 일부를 읽어서 이 PR 때문인지 판단해요.
 - 코드와 CI 로그 일부도 Anthropic API로 전송돼요. CI 로그에 비밀 값을 출력하지 않아요.
+- 의견마다 심각도(높음, 보통, 낮음)를 붙여요. 읽어서 확정하지 못한 의심은 인라인으로 달지 않고 리뷰 본문의 "확인이 필요한 의견"에 접어 둬요.
 - 바뀐 줄에 대한 의견은 인라인 코멘트로, 바뀌지 않은 줄에 대한 의견은 리뷰 본문에 모아요.
 - 리뷰는 [`NARi3040/docs-review`](https://github.com/NARi3040/docs-review) 액션으로 실행해요(비공개 저장소). 이 저장소에 맞춘 맥락과 추가 검사는 [`.github/docs-review.md`](.github/docs-review.md)에서, 실행 설정은 [`.github/workflows/docs-review.yml`](.github/workflows/docs-review.yml)에서 고쳐요.
 - 리뷰는 PR을 열 때 한 번만 실행돼요. 수정 후 다시 받으려면 PR을 닫았다가 다시 열어요.
@@ -165,7 +166,7 @@ Discussions 탭 → Categories 옆 연필 아이콘 → **New category**에서 �
 
 ### AI 리뷰
 
-Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하면 키를 입력하라고 나와요. `NARi3040/docs-review` `v2.0.0-rc.3`은 Claude Code를 `claude -p`(Agent SDK CLI)로 실행해서 프로모션 크레딧으로도 동작해요.
+Anthropic API 키를 저장소 시크릿으로 등록해요. 명령을 실행하면 키를 입력하라고 나와요. `NARi3040/docs-review` `v2.0.0-rc.4`는 Claude Code를 `claude -p`(Agent SDK CLI)로 실행해서 프로모션 크레딧으로도 동작해요.
 
 ```bash
 gh secret set ANTHROPIC_API_KEY -R NARi3040/KJG-SW-AI-W11-React
