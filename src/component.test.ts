@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { JSDOM } from "jsdom";
-import { expand } from "./component.ts";
+import { FunctionComponent, createRoot, expand } from "./component.ts";
 import type { Memo } from "./component.ts";
 import { diff } from "./diff.ts";
 import { mountArea } from "./dom.ts";
@@ -517,5 +517,285 @@ describe("expand: 결과 캐시", () => {
     const after = render(tree("z"));
 
     assert.deepStrictEqual(after, expand(tree("z")));
+  });
+});
+
+function createContainer(): HTMLElement {
+  globalThis.document = new JSDOM(
+    '<!doctype html><html><body><div id="root"></div></body></html>',
+  ).window.document;
+  const container = document.getElementById("root");
+  assert.ok(container);
+  return container;
+}
+
+describe("FunctionComponent: 생성과 mount", () => {
+  test("생성자는 필드만 채우고 렌더하지 않아요", () => {
+    const container = createContainer();
+    let calls = 0;
+    const App = () => {
+      calls++;
+      return h("p");
+    };
+    const props = { title: "x" };
+
+    const root = new FunctionComponent(container, App, props);
+
+    assert.equal(calls, 0);
+    assert.equal(root.container, container);
+    assert.equal(root.type, App);
+    assert.equal(root.props, props);
+    assert.equal(root.tree, null);
+    assert.deepStrictEqual(root.hooks, []);
+    assert.deepStrictEqual(root.effects, []);
+    assert.equal(root.flushing, false);
+    assert.equal(container.childNodes.length, 0);
+  });
+
+  test("mount는 영역에 루트 하나를 그리고 펼친 tree를 저장해요", () => {
+    const container = createContainer();
+    const App = () => h("ul", null, h(Item, { label: "a" }));
+
+    const root = new FunctionComponent(container, App);
+    root.mount();
+
+    assert.equal(container.childNodes.length, 1);
+    assert.equal(container.innerHTML, "<ul><li>a</li></ul>");
+    assert.ok(root.tree);
+    assert.equal(hasComponent(root.tree), false);
+  });
+
+  test("루트 함수는 props를 받고, props가 없으면 빈 객체를 받아요", () => {
+    const received: unknown[] = [];
+    const App = (props: object) => {
+      received.push(props);
+      return h("p");
+    };
+
+    createRoot(createContainer(), App, { title: "x" });
+    createRoot(createContainer(), App);
+
+    assert.deepStrictEqual(received, [{ title: "x" }, {}]);
+  });
+
+  test("mount 뒤 핸들러를 단 버튼을 누르면 불려요", () => {
+    const container = createContainer();
+    let clicked = 0;
+    const App = () =>
+      h(
+        "button",
+        {
+          onClick: () => {
+            clicked++;
+          },
+        },
+        "누르기",
+      );
+
+    createRoot(container, App);
+    (container.querySelector("button") as HTMLElement).click();
+
+    assert.equal(clicked, 1);
+  });
+
+  test("createRoot는 mount한 인스턴스를 돌려줘요", () => {
+    const container = createContainer();
+    const root = createRoot(container, () => h("p", null, "x"));
+
+    assert.ok(root instanceof FunctionComponent);
+    assert.notEqual(root.tree, null);
+    assert.equal(container.innerHTML, "<p>x</p>");
+  });
+});
+
+describe("FunctionComponent: renderTree", () => {
+  test("렌더 중에는 current가 자신이고 hookIndex가 0이며, 끝나면 이전 값으로 돌아와요", () => {
+    const container = createContainer();
+    const seen: unknown[] = [];
+    const App = () => {
+      seen.push(
+        FunctionComponent.current,
+        FunctionComponent.current?.hookIndex,
+      );
+      return h("p");
+    };
+    const root = new FunctionComponent(container, App);
+    root.hookIndex = 5;
+
+    root.mount();
+
+    assert.deepStrictEqual(seen, [root, 0]);
+    assert.equal(FunctionComponent.current, null);
+  });
+
+  test("루트 함수가 던져도 FunctionComponent.current가 이전 값이에요", () => {
+    const other = new FunctionComponent(createContainer(), () => h("p"));
+    const root = new FunctionComponent(createContainer(), () => {
+      throw new Error("렌더 실패");
+    });
+    FunctionComponent.current = other;
+    try {
+      assert.throws(() => root.mount(), /렌더 실패/);
+      assert.equal(FunctionComponent.current, other);
+      assert.equal(root.tree, null);
+    } finally {
+      FunctionComponent.current = null;
+    }
+  });
+
+  test("update는 결과 캐시를 써서 props가 같은 자식을 다시 부르지 않아요", () => {
+    const { fn: Row, calls } = counted((p: { label: string }) =>
+      h("li", null, p.label),
+    );
+    let extra = "a";
+    const App = () =>
+      h("ul", null, h(Row, { label: "고정" }), h("li", null, extra));
+    const root = createRoot(createContainer(), App);
+
+    extra = "b";
+    root.update();
+
+    assert.equal(calls.count, 1);
+  });
+});
+
+describe("FunctionComponent: update", () => {
+  test("바뀐 곳의 Patch만 돌려주고 나머지 노드는 같은 객체예요", () => {
+    const container = createContainer();
+    let count = 0;
+    const App = () =>
+      h("div", null, h("p", null, "고정"), h("span", null, count));
+    const root = createRoot(container, App);
+    const [p, span] = Array.from(container.firstChild!.childNodes);
+    const before = root.tree;
+
+    count = 1;
+    const patches = root.update();
+
+    assert.deepStrictEqual(patches, [{ type: "TEXT", path: [1], value: "1" }]);
+    const [p2, span2] = Array.from(container.firstChild!.childNodes);
+    assert.equal(p2, p);
+    assert.equal(span2, span);
+    assert.equal(container.textContent, "고정1");
+    assert.notEqual(root.tree, before);
+  });
+
+  test("바뀐 것이 없으면 []를 돌려줘요", () => {
+    const root = createRoot(createContainer(), () => h("p", null, "x"));
+    assert.deepStrictEqual(root.update(), []);
+  });
+
+  test("key가 있는 Item 목록을 재정렬하면 Patch는 MOVE뿐이고 DOM 노드가 같은 객체예요", () => {
+    const container = createContainer();
+    let labels = ["a", "b", "c"];
+    const App = () =>
+      h(
+        "ul",
+        null,
+        labels.map((label) => h(Item, { key: label, label })),
+      );
+    const root = createRoot(container, App);
+    const [a, b, c] = Array.from(container.firstChild!.childNodes);
+
+    labels = ["c", "a", "b"];
+    const patches = root.update();
+
+    assert.deepStrictEqual(patches, [
+      { type: "MOVE", parentPath: [], from: 2, to: 0 },
+    ]);
+    assert.deepStrictEqual(Array.from(container.firstChild!.childNodes), [
+      c,
+      a,
+      b,
+    ]);
+  });
+
+  test("핸들러를 바꾸면 update 뒤 새 핸들러가 불려요", () => {
+    const container = createContainer();
+    const log: number[] = [];
+    let version = 0;
+    const App = () => {
+      const current = version;
+      return h("button", { onClick: () => log.push(current) }, "누르기");
+    };
+    const root = createRoot(container, App);
+    const button = container.querySelector("button") as HTMLElement;
+
+    button.click();
+    version = 1;
+    root.update();
+    button.click();
+
+    assert.deepStrictEqual(log, [0, 1]);
+  });
+
+  test("mount 전에 update를 부르면 오류를 던져요", () => {
+    const root = new FunctionComponent(createContainer(), () => h("p"));
+    assert.throws(() => root.update(), /mount를 먼저 불러야 해요/);
+  });
+});
+
+describe("FunctionComponent: runEffects", () => {
+  test("effects에 넣은 작업 2개가 차례로 1번씩 불리고 effects가 비어요", () => {
+    const root = new FunctionComponent(createContainer(), () => h("p"));
+    const order: number[] = [];
+    root.effects.push(
+      () => order.push(1),
+      () => order.push(2),
+    );
+
+    root.runEffects();
+    root.runEffects();
+
+    assert.deepStrictEqual(order, [1, 2]);
+    assert.deepStrictEqual(root.effects, []);
+    assert.equal(root.flushing, false);
+  });
+
+  test("첫 작업이 작업을 더 넣고 runEffects를 다시 불러도, 넣은 작업은 두 번째 작업 뒤에 1번 불려요", () => {
+    const root = new FunctionComponent(createContainer(), () => h("p"));
+    const order: string[] = [];
+    root.effects.push(
+      () => {
+        order.push("첫 시작");
+        root.effects.push(() => order.push("추가"));
+        root.runEffects();
+        order.push("첫 끝");
+      },
+      () => order.push("둘째"),
+    );
+
+    root.runEffects();
+
+    assert.deepStrictEqual(order, ["첫 시작", "첫 끝", "둘째", "추가"]);
+  });
+
+  test("작업이 던져도 flushing이 false로 돌아와요", () => {
+    const root = new FunctionComponent(createContainer(), () => h("p"));
+    root.effects.push(() => {
+      throw new Error("effect 실패");
+    });
+
+    assert.throws(() => root.runEffects(), /effect 실패/);
+    assert.equal(root.flushing, false);
+  });
+
+  test("mount와 update는 tree를 저장하고 DOM을 바꾼 뒤 effects를 실행해요", () => {
+    const container = createContainer();
+    let count = 0;
+    const seen: string[] = [];
+    const root = new FunctionComponent(container, () => {
+      FunctionComponent.current?.effects.push(() => {
+        const tree = root.tree;
+        seen.push(`${container.textContent}:${tree?.children}`);
+      });
+      return h("p", null, count);
+    });
+
+    root.mount();
+    count = 1;
+    root.update();
+
+    assert.deepStrictEqual(seen, ["0:0", "1:1"]);
   });
 });

@@ -1,3 +1,6 @@
+import { diff } from "./diff.ts";
+import { listen, mountArea } from "./dom.ts";
+import { applyPatches } from "./patch.ts";
 import { COMPONENT } from "./vnode.ts";
 import type { Component, Key, Patch, Props, VNode } from "./vnode.ts";
 
@@ -103,15 +106,56 @@ export class FunctionComponent {
     type: Component,
     props: Record<string, unknown> | null = null,
   ) {
-    throw new Error("미구현");
+    this.container = container;
+    this.type = type;
+    this.props = props;
+  }
+
+  renderTree(): VNode {
+    const previous = FunctionComponent.current;
+    this.hookIndex = 0;
+    FunctionComponent.current = this;
+    try {
+      const rendered = this.type({ ...this.props });
+      const next = new Map<string, Memo>();
+      const tree = expand(rendered, this.memo, next);
+      this.memo = next;
+      return tree;
+    } finally {
+      FunctionComponent.current = previous;
+    }
   }
 
   mount(): void {
-    throw new Error("미구현");
+    const tree = this.renderTree();
+    listen(this.container);
+    mountArea(this.container, tree);
+    this.tree = tree;
+    this.runEffects();
   }
 
   update(): Patch[] {
-    throw new Error("미구현");
+    if (this.tree === null) throw new Error("mount를 먼저 불러야 해요");
+    const tree = this.renderTree();
+    const patches = diff(this.tree, tree);
+    applyPatches(this.container, patches);
+    this.tree = tree;
+    this.runEffects();
+    return patches;
+  }
+
+  runEffects(): void {
+    if (this.flushing) return;
+    this.flushing = true;
+    try {
+      let task = this.effects.shift();
+      while (task) {
+        task();
+        task = this.effects.shift();
+      }
+    } finally {
+      this.flushing = false;
+    }
   }
 }
 
@@ -120,5 +164,7 @@ export function createRoot(
   type: Component,
   props: Record<string, unknown> | null = null,
 ): FunctionComponent {
-  throw new Error("미구현");
+  const root = new FunctionComponent(container, type, props);
+  root.mount();
+  return root;
 }
