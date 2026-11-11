@@ -8,13 +8,11 @@ import { applyPatches } from "./patch.ts";
 import { COMPONENT, h } from "./vnode.ts";
 import type { VNode } from "./vnode.ts";
 
-// 트리 안에 컴포넌트 VNode가 하나라도 남았는지 봐요.
 function hasComponent(v: VNode): boolean {
   if (v.flags & COMPONENT) return true;
   return Array.isArray(v.children) && v.children.some(hasComponent);
 }
 
-// VNode와 children 배열을 모두 얼려서, expand가 입력을 고치면 오류가 나게 해요.
 function deepFreeze(v: VNode): VNode {
   if (Array.isArray(v.children)) {
     for (const child of v.children) deepFreeze(child);
@@ -87,6 +85,28 @@ describe("expand: 컴포넌트 펼치기", () => {
     expand(h(Box, {}));
     assert.equal(received[0], inner.children);
     assert.equal(received[1], null);
+  });
+
+  test("props의 children은 자식 인자가 없을 때만 넘어가요", () => {
+    const received: unknown[] = [];
+    const Box = (props: { children?: VNode[] | string | null }) => {
+      received.push(props.children);
+      return h("div", null);
+    };
+    expand(h(Box, { children: "y" }));
+    expand(h(Box, { children: "y" }, "x"));
+    assert.deepStrictEqual(received, ["y", "x"]);
+  });
+
+  test("받은 자식을 props로 넘기는 감싸기 컴포넌트에서도 자식이 남아요", () => {
+    const Box = (props: { children?: VNode[] | string | null }) =>
+      h("section", null, props.children);
+    const Card = (props: { children?: VNode[] | string | null }) =>
+      h(Box, { children: props.children });
+    assert.deepStrictEqual(
+      expand(h(Card, {}, h("p", null, "내용"))),
+      h("section", null, h("p", null, "내용")),
+    );
   });
 
   test("props를 그대로 넘겨요", () => {
