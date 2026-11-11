@@ -6,7 +6,22 @@ import {
   TEXT_CHILDREN,
   h,
 } from "./vnode.ts";
-import type { Props, PropValue, VNode } from "./vnode.ts";
+import type { Listener, Props, PropValue, VNode } from "./vnode.ts";
+
+const handlers = new WeakMap<Element, Record<string, Listener>>();
+const listening = new WeakSet<Element>();
+const delegatedEvents = [
+  "click",
+  "dblclick",
+  "contextmenu",
+  "input",
+  "change",
+  "submit",
+  "keydown",
+  "keyup",
+  "focusin",
+  "focusout",
+];
 
 const rawTextTags = new Set(["style", "xmp", "iframe", "noembed", "noframes"]);
 const voidTags = new Set([
@@ -164,7 +179,20 @@ function setStyle(el: Element, next: PropValue): void {
 }
 
 export function setProp(el: Element, key: string, next: PropValue): void {
-  if (key.toLowerCase().startsWith("on")) return;
+  if (key.toLowerCase().startsWith("on")) {
+    const name = key.slice(2).toLowerCase();
+    let record = handlers.get(el);
+    if (typeof next === "function") {
+      if (!record) {
+        record = Object.create(null) as Record<string, Listener>;
+        handlers.set(el, record);
+      }
+      record[name] = next;
+    } else if (record) {
+      delete record[name];
+    }
+    return;
+  }
 
   let off = next === null || next === undefined || next === false;
   if (key === "class") {
@@ -224,6 +252,27 @@ export function mountArea(container: Element, vnode: VNode): void {
   container.replaceChildren(createDOM(vnode));
 }
 
+function dispatch(container: Element, event: Event): void {
+  const path: Element[] = [];
+  // 핸들러가 DOM을 바꿔도 이벤트 시작 때의 부모까지 전달해요.
+  for (
+    let node = event.target as Node | null;
+    node && node !== container;
+    node = node.parentNode
+  ) {
+    if (node.nodeType === 1) path.push(node as Element);
+  }
+  for (const el of path) {
+    const fn = handlers.get(el)?.[event.type];
+    if (fn) fn(event);
+    if (event.cancelBubble) break;
+  }
+}
+
 export function listen(container: Element): void {
-  throw new Error("미구현");
+  if (listening.has(container)) return;
+  for (const name of delegatedEvents) {
+    container.addEventListener(name, (event) => dispatch(container, event));
+  }
+  listening.add(container);
 }
