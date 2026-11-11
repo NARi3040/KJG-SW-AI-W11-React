@@ -28,7 +28,7 @@ setState → 바로 update() → 루트 함수 실행 → expand로 자식 펼�
 
 `expand(v: VNode, prev?: Map<string, Memo>, next?: Map<string, Memo>): VNode`는 컴포넌트 VNode를 실행해 요소 VNode만 남겨요(2 C).
 
-- 컴포넌트면 `v.type({ ...v.props, children: v.children })`를 실행하고 결과를 다시 펼쳐요.
+- 컴포넌트면 `v.type({ ...v.props, children })`를 실행하고 결과를 다시 펼쳐요. `children`은 `v.children`이 `null`이 아니면(자식 인자가 있으면) `v.children`, 아니면 `v.props.children`, 둘 다 없으면 `null`이에요. 그래서 `h(Box, { children: x })`처럼 받은 자식을 props로 넘겨도 사라지지 않아요(2026-11-11 담당자 결정).
 - 컴포넌트는 요소 VNode를 돌려줘야 해요. `null`, 문자열 반환은 지원하지 않고 검사하지도 않아요([제외한 안건](#제외한-안건)의 13).
 - 컴포넌트에 `key`가 있으면 결과의 `key`를 그 값으로 바꿔요. 결과에 이미 `key`가 있어도 덮어써요. 그래야 목록 재정렬 때 key 비교가 동작하고, key가 `"a"`, `"b"`인 두 `Item`이 둘 다 key `"inner"`인 요소를 돌려줘도 형제 key가 겹치지 않아요. 컴포넌트에 `key`가 없으면 결과의 `key`를 그대로 둬요.
 - `key`는 컴포넌트에 넘기지 않아요. `h`가 `props`에서 꺼내 VNode의 최상위 필드로 옮기기 때문이에요. 컴포넌트가 그 값이 필요하면 다른 이름의 prop으로 따로 넘겨요.
@@ -130,6 +130,7 @@ setter는 첫 렌더에 한 번 만들어 칸에 넣고, 다음 렌더부터는 
 | 컴포넌트가 `null`이나 문자열 반환 | 지원하지 않아요. 검사하지 않아서 뒤의 `diff`나 `createDOM`에서 오류가 날 수 있어요 |
 | 루트 태그가 바뀜 | 경로 `[]`의 `REPLACE` |
 | 조건부 자식 `cond && h(A)` | `false`를 버려요. key가 없으면 뒤 형제의 위치가 바뀌어 캐시도 다시 실행해요 |
+| 같은 부모 아래 중복 key | 지원하지 않아요(2026-11-11 담당자 결정). 자리 이름이 겹쳐 뒤 형제가 앞 형제의 캐시 항목을 덮어써요. 다시 쓰기 전에 `type`, `children`, props를 비교하므로 화면은 맞고 캐시 적중만 줄어요. `JSON.stringify`가 같은 문자열을 내는 key(`Infinity`와 `-Infinity`는 둘 다 `"null"`)도 같아요 |
 | 렌더나 effect에서 예외 | 처리하지 않고 그대로 던져요. `FunctionComponent.current`만 `finally`로 되돌려요 |
 
 ## 테스트
@@ -142,7 +143,7 @@ setter는 첫 렌더에 한 번 만들어 칸에 넣고, 다음 렌더부터는 
 |---|---|
 | `expand`: 컴포넌트 없음 | 입력과 같은 객체(`===`) |
 | `expand`: 중첩 | `A`가 `h(B)`를 돌려줘도 결과에 `COMPONENT` 플래그가 없음 |
-| `expand`: `children` 전달 | `h(Box, {}, "x")`에서 `Box`가 `props.children === "x"`를 받음 |
+| `expand`: `children` 전달 | `h(Box, {}, "x")`에서 `Box`가 `props.children === "x"`를 받음. `h(Box, { children: "y" })`면 `"y"`, `h(Box, { children: "y" }, "x")`면 `"x"`, `h(Box, {})`면 `null` |
 | key 승계 | `h(Item, { key })`를 재정렬해도 Patch는 `MOVE`뿐이고 DOM 노드가 같은 객체(`===`). key가 `"a"`, `"b"`인 두 `Item`이 둘 다 key `"inner"`인 `li`를 돌려줘도 펼친 `li`의 key가 `"a"`, `"b"`. `Item`이 받은 props에 `key`가 없음 |
 | 캐시: 같은 props | 두 번째 `expand`에서 자식 함수 호출 0번, 결과가 지난 결과와 같은 객체 |
 | 캐시: 다른 props, 새 함수 prop | 자식 함수 호출 1번. `{ a: undefined }` → `{ b: undefined }`도 1번 |
