@@ -122,6 +122,7 @@ flowchart LR
 |---|---|---|---|
 | `expand(v: VNode, prev?: Map<string, Memo>, next?: Map<string, Memo>): VNode` | 공개 | 컴포넌트를 실행해 요소 VNode만 남겨요. `prev`, `next`가 있으면 캐시를 써요(단계 5) | 단계 4: [component-hooks.md의 테스트](component-hooks.md#테스트)의 `expand` 줄. 단계 5: 캐시 줄 |
 | `expandAt(v: VNode, slot: string, prev?, next?): VNode` | 내부 | 자리 이름(`slot`)을 들고 재귀해요 | `expand`로 확인 |
+| `Memo` (수정) | 공개 타입 | 뼈대의 타입에 `key: Key \| null` 필드를 추가해요(단계 5). 다시 쓰는 조건에서 컴포넌트 VNode의 `key`를 비교하기 위해서예요([결과 캐시](component-hooks.md#결과-캐시)). `Memo`는 `src/component.ts` 안에서만 써요 | 캐시의 "`key`만 바뀜" 줄 |
 | `sameProps(a: Props \| null, b: Props \| null): boolean` | 내부 | 둘 다 `null`이거나, 키 수가 같고 `a`의 모든 키가 `b`에도 있으며 값이 `Object.is`로 같은지 | `{ a: 1 }`, `{ a: 1 }` → `true`. `null`, `null` → `true`. `{ a: 1 }`, `{ b: 1 }` → `false`. `{ a: undefined }`, `{ b: undefined }` → `false`. `{ f: () => {} }` 두 번 → `false`. `null`, `{}` → `false` |
 | `FunctionComponent` 생성자 `(container: Element, type: Component, props: Record<string, unknown> \| null = null)` | 공개 | 필드를 채워요. 렌더하지 않아요 | `tree`가 `null`, `hooks`가 `[]` |
 | `renderTree(): VNode` | 내부 | `hookIndex`를 0으로 두고 `FunctionComponent.current`를 자신으로 둔 채 루트 함수를 실행해 펼쳐요. `finally`로 `current`를 되돌려요 | 루트 함수가 던져도 `current`가 이전 값 |

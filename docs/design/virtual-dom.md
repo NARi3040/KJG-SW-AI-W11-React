@@ -73,6 +73,7 @@ function h(type: string, props?: Props | null, ...children: Child[]): VNode;
 
 - 키를 넣은 순서대로 `이름: 값`을 `"; "`로 이어요. 끝에 `;`를 붙이지 않아요.
 - 이름의 대문자는 `-`와 소문자로 바꿔요. `fontSize` → `font-size`, `WebkitTransition` → `-webkit-transition`. `--`로 시작하는 사용자 정의 속성은 그대로 둬요.
+- CSSOM 이름의 예외로 `cssFloat`는 `float`로 바꿔요. `webkit` 바로 뒤가 대문자인 이름은 앞에 `-`를 붙여요. 예를 들어 `webkitLineClamp`는 `-webkit-line-clamp`가 돼요. 사용자 정의 속성에는 이 예외를 적용하지 않아요.
 - 값이 빈 문자열인 키는 빼요. 결과가 빈 문자열이면 `style` 키를 지워요.
 - 값은 검사하지 않아요. 브라우저가 받지 않는 값은 `cssText`에 넣을 때 무시돼요.
 
@@ -80,6 +81,7 @@ function h(type: string, props?: Props | null, ...children: Child[]): VNode;
 |---|---|
 | `{ color: "red", fontSize: "12px" }` | `"color: red; font-size: 12px"` |
 | `{ "--gap": "4px", gridTemplateColumns: "repeat(9, 2rem)" }` | `"--gap: 4px; grid-template-columns: repeat(9, 2rem)"` |
+| `{ cssFloat: "left", webkitLineClamp: "2" }` | `"float: left; -webkit-line-clamp: 2"` |
 | `{ color: "" }`, `{}` | `style` 키 없음 |
 | `"color: red"` | 그대로 |
 

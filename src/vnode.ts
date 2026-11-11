@@ -90,6 +90,21 @@ function normalizeChildren(raw: Child[]): {
   };
 }
 
+/** 객체 style을 CSS 문자열로 바꾸고 빈 값과 CSSOM 이름 예외를 처리해요. */
+function styleText(style: Record<string, string>): string {
+  return Object.entries(style)
+    .filter(([, value]) => value !== "")
+    .map(([name, value]) => {
+      let cssName = name.startsWith("--")
+        ? name
+        : name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      if (name === "cssFloat") cssName = "float";
+      else if (/^webkit[A-Z]/.test(name)) cssName = `-${cssName}`;
+      return `${cssName}: ${value}`;
+    })
+    .join("; ");
+}
+
 function normalizeProps(
   props: Props | null,
   isElement: boolean,
@@ -100,6 +115,14 @@ function normalizeProps(
   if (isElement && !("class" in normalized) && "className" in normalized) {
     normalized.class = normalized.className;
     delete normalized.className;
+  }
+  if (
+    isElement &&
+    normalized.style !== null &&
+    typeof normalized.style === "object"
+  ) {
+    normalized.style = styleText(normalized.style);
+    if (normalized.style === "") delete normalized.style;
   }
   return {
     props: Object.keys(normalized).length === 0 ? null : normalized,
