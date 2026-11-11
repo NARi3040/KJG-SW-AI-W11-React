@@ -47,7 +47,9 @@ expand(h("ul", null, h(Item, { key: "a", label: "x" })));
 자식 컴포넌트는 props만 받는 순수 함수라서, 지난 렌더와 입력이 같으면 결과도 같아요. 그래서 `prev`와 `next`를 받으면 지난 결과를 다시 써요. 다시 쓴 결과는 지난 트리에 있던 **같은 객체**라서, `diff`가 `o === n`에서 바로 끝나 그 아래를 비교하지 않아요.
 
 - **자리 이름(`slot`):** 루트 결과는 `""`예요. 요소의 `i`번째 자식은 `부모 slot + "/" + i`, key가 있으면 `부모 slot + "/k" + JSON.stringify(key)`예요(`/k"a"`, `/k1`). 컴포넌트의 결과는 `컴포넌트 slot + ">"`예요. key로 이름을 지으면 목록 순서가 바뀌어도 같은 이름이에요. `JSON.stringify`로 감싸서 key `1`과 `"1"`, `/`나 `>`가 든 key도 다른 이름이 돼요.
-- **다시 쓰는 조건:** `prev.get(slot)`이 있고 `type`이 같고, `key`와 `children`이 각각 `Object.is`로 같고, props가 같을 때예요. 자리 이름이 같아도 `key`는 다를 수 있어서 따로 비교해요. 컴포넌트가 돌려준 컴포넌트의 자리 이름(`slot + ">"`)에는 key가 들어가지 않고, `JSON.stringify`는 `Infinity`, `-Infinity`, `NaN`을 모두 `"null"`로 바꿔요. 비교하지 않으면 옛 key가 담긴 결과를 다시 써서 key 승계가 깨져요(2026-11-11 담당자 결정). props가 같다는 것은 지난 props와 이번 props가 둘 다 `null`이거나, 둘 다 객체이고 키 수가 같고 지난 props의 모든 키가 이번 props에도 있으며 값이 `Object.is`로 같다는 뜻이에요. 그래서 `{ a: undefined }`와 `{ b: undefined }`는 달라요. `null`과 `{}`도 달라요.
+- **다시 쓰는 조건:** `prev.get(slot)`이 있고 `type`이 같고, `key`와 `children`이 각각 `Object.is`로 같고, props가 같을 때예요.
+  - `key`를 따로 비교하는 이유는 자리 이름이 같아도 `key`가 다를 수 있기 때문이에요. 컴포넌트가 돌려준 컴포넌트의 자리 이름(`slot + ">"`)에는 key가 들어가지 않아요. 예를 들어 `A`가 `h(B, { key: p.id, label: "x" })`를 돌려주고 `id`만 바뀌면 `B`의 자리 이름은 그대로예요. `key`를 비교하지 않으면 옛 key가 담긴 결과를 다시 써서 key 승계가 깨져요(2026-11-11 담당자 결정). 자리 이름이 겹치는 다른 경우는 [엣지 케이스](#엣지-케이스)를 봐요.
+  - props가 같다는 것은 지난 props와 이번 props가 둘 다 `null`이거나, 둘 다 객체이고 키 수가 같고 지난 props의 모든 키가 이번 props에도 있으며 값이 `Object.is`로 같다는 뜻이에요. 그래서 `{ a: undefined }`와 `{ b: undefined }`는 달라요. `null`과 `{}`도 달라요.
 - 다시 쓰면 그 `Memo`를 `next`에 그대로 넣고, `prev`에서 이름이 `slot + ">"`로 시작하는 항목(그 컴포넌트 안쪽의 자리)도 모두 `next`에 옮긴 뒤 `result`를 돌려줘요. 옮기지 않으면 다음 렌더에 바깥 컴포넌트가 다시 실행될 때 안쪽 컴포넌트가 모두 다시 실행돼요. 아니면 컴포넌트를 실행해 펼친 결과를 `{ type, key, props, children, result }`로 `next`에 넣어요. `key`는 컴포넌트 VNode의 `key`예요. `result`에는 물려받은 `key`가 들어가 있어요.
 - `FunctionComponent`가 렌더마다 새 `Map`을 `next`로 넘기고, 끝나면 그것을 다음 렌더의 `prev`로 써요. 이번 렌더에 없던 자리는 사라져요.
 - 루트 컴포넌트는 캐시하지 않아요. `renderTree`가 루트 함수를 직접 실행해요.
@@ -131,7 +133,7 @@ setter는 첫 렌더에 한 번 만들어 칸에 넣고, 다음 렌더부터는 
 | 컴포넌트가 `null`이나 문자열 반환 | 지원하지 않아요. 검사하지 않아서 뒤의 `diff`나 `createDOM`에서 오류가 날 수 있어요 |
 | 루트 태그가 바뀜 | 경로 `[]`의 `REPLACE` |
 | 조건부 자식 `cond && h(A)` | `false`를 버려요. key가 없으면 뒤 형제의 위치가 바뀌어 캐시도 다시 실행해요 |
-| 같은 부모 아래 중복 key | 지원하지 않아요(2026-11-11 담당자 결정). 자리 이름이 겹쳐 뒤 형제가 앞 형제의 캐시 항목을 덮어써요. 다시 쓰기 전에 `type`, `key`, `children`, props를 비교하므로 화면은 맞고 캐시 적중만 줄어요 |
+| 같은 부모 아래 중복 key | 지원하지 않아요(2026-11-11 담당자 결정). 자리 이름이 겹쳐 뒤 형제가 앞 형제의 캐시 항목을 덮어써요. 다시 쓰기 전에 `type`, `key`, `children`, props를 비교하므로 캐시 때문에 결과가 달라지지는 않고 캐시 적중만 줄어요. 중복 key 자체는 `diff`가 먼저 나온 쪽과 짝지어서([diff.md의 key 비교](diff.md#key-비교)), 의도와 다른 DOM 노드가 남아 입력값이 옮겨 가거나 사라질 수 있어요 |
 | `JSON.stringify`가 같은 문자열을 내는 key | `Infinity`, `-Infinity`, `NaN`은 모두 `"null"`이 되어 자리 이름이 겹쳐요. `diff`의 key 비교에서는 `Infinity`와 `-Infinity`가 서로 다른 key예요. 한 렌더 안의 형제라면 중복 key와 같이 캐시 적중만 줄고, 렌더 사이에 key가 바뀌면 `key` 비교로 다시 실행해요 |
 | 렌더나 effect에서 예외 | 처리하지 않고 그대로 던져요. `FunctionComponent.current`만 `finally`로 되돌려요 |
 
