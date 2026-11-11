@@ -15,19 +15,20 @@
 |---|---|---|---|
 | 이 문서 | VNode, Patch, Diff와 Patch 사이의 약속 | `src/vnode.ts` (타입, 상수) | #13, #14 |
 | [phase-1-plan.md](phase-1-plan.md) | 담당별 함수 목록, 구현 순서, 완료 확인 | 해당 없음 | #4, #5, #6, #7 |
+| [phase-2-plan.md](phase-2-plan.md) | Phase 2의 담당, 순서, 함수 표 | 해당 없음 | #65, #8, #9 |
 | [virtual-dom.md](virtual-dom.md) | VNode 생성, DOM ↔ VNode 변환, 속성 반영 | `src/vnode.ts`, `src/dom.ts` | #4 |
 | [diff.md](diff.md) | 두 VNode → Patch 목록 | `src/diff.ts` | #5 |
 | [patch.md](patch.md) | Patch 목록 → 실제 DOM 반영 | `src/patch.ts` | #6 |
 | [verify-page.md](verify-page.md) | 검증 페이지, State History, 시연 시나리오 | `src/app.ts` | #7 |
-| [component-hooks.md](component-hooks.md) | `FunctionComponent`, Hooks (이번 구현 범위 밖) | `src/component.ts` | #8, #9 |
+| [component-hooks.md](component-hooks.md) | `FunctionComponent`, `expand`, Hooks | `src/component.ts`, `src/hooks.ts` | #8, #9 |
 
-의존은 한 방향이에요. `vnode` ← `dom` ← `patch` ← `app`, `vnode` ← `diff` ← `app`이고, `component`는 `vnode`, `dom`, `diff`, `patch`를 써요. `src/index.ts`는 모든 모듈을 다시 내보내요.
+의존은 한 방향이에요. `vnode` ← `dom` ← `patch` ← `app`, `vnode` ← `diff` ← `app`이고, `component`는 `vnode`, `dom`, `diff`, `patch`를 쓰고, `hooks`는 `component`를 써요. `src/index.ts`는 검증 페이지(`verify-page`, `verify-cases`)를 뺀 모듈을 다시 내보내요.
 
 ## 이번 구현 범위와 분담
 
-이번에는 Phase 1(R1-1~R1-7)까지만 구현해요. Phase 2와 테스트 페이지(#8, #9, #10)는 이번 범위가 아니에요.
+Phase 1(R1-1~R1-7)은 구현을 마쳤어요. 이제 Phase 2(#8, #9)를 구현해요. 테스트 페이지(#10)는 Phase 2가 끝난 뒤 따로 계획해요.
 
-담당과 함수별 순서는 [phase-1-plan.md](phase-1-plan.md)를 봐 주세요.
+담당과 함수별 순서는 [phase-1-plan.md](phase-1-plan.md)와 [phase-2-plan.md](phase-2-plan.md)를 봐 주세요.
 
 ## 왜 경로 기반 Patch 목록인가
 
@@ -78,12 +79,12 @@ export interface VNode {
 
 `tsconfig.json`의 `erasableSyntaxOnly` 때문에 `enum`은 쓸 수 없어요. 그래서 `flags` 비트를 상수로 둬요.
 
-`COMPONENT`, `Component`, `Listener`는 Phase 2에서 형식을 바꾸지 않으려고 미리 둬요. Phase 1에서는 컴포넌트를 실행하지 않고 리스너를 붙이지 않아요.
+`COMPONENT`, `Component`, `Listener`는 Phase 2에서 형식을 바꾸지 않으려고 미리 둬요. Phase 1에서는 컴포넌트를 실행하지 않고 리스너를 붙이지 않아요. Phase 2에서 컴포넌트는 `expand`가 실행하고, 리스너는 [이벤트 위임](virtual-dom.md#이벤트-위임)으로 영역에 붙여요.
 
 | 필드 | 의미 | 허용 형식 | 예시 |
 |---|---|---|---|
 | `type` | 노드 종류. 다르면 Diff가 통째로 교체해요 | 소문자 태그 이름, 함수 컴포넌트, `TEXT_TYPE` | `"li"` |
-| `props` | 속성. 이름은 HTML 속성 이름이고, `key`는 들어가지 않아요. 없으면 `null`이에요 | `Props` 또는 `null` | `{ class: "list" }` |
+| `props` | 속성. 이름은 HTML 속성 이름이고, `key`는 들어가지 않아요. 없으면 `null`이에요. 요소의 `style`은 항상 문자열이에요. 컴포넌트 VNode에서는 컴포넌트가 받는 값 그대로라 배열이나 인자 있는 함수처럼 `PropValue`가 아닌 값이 들어 있을 수 있어요([`h` 오버로드](virtual-dom.md#h)). 필드 타입은 `Props \| null` 그대로 두고, `h`가 형 변환해서 넣어요. 이 값을 읽는 곳은 컴포넌트에 넘기는 `expand`뿐이고, `Component`가 `(props: any) => VNode`라 그대로 넘길 수 있어요. 컴포넌트 VNode는 `expand` 뒤에 남지 않아서 Diff와 Patch는 이 값을 보지 않아요. 이 변경은 #65(`common-format`)에서 정했어요 | `Props` 또는 `null` | `{ class: "list" }` |
 | `key` | 형제 사이의 이름표. DOM에서 읽을 때는 `data-key` 값이에요 | 문자열, 숫자, `null` | `"vdom"` |
 | `children` | 자식. 텍스트 하나뿐이면 문자열, 아니면 배열, 없으면 `null`이에요. 텍스트 VNode는 항상 자기 내용 문자열이에요 | `VNode[]`, 문자열, `null` | `"하나"` |
 | `flags` | 노드 종류와 자식 종류를 합친 비트. `h`가 만들 때 한 번 계산해요 | 위 상수의 합 | `ELEMENT \| TEXT_CHILDREN` = 9 |
@@ -144,7 +145,7 @@ export type Patch =
 
 - **`TEXT`의 `path`:** 자식이 문자열인 요소는 그 요소를, 독립 텍스트 VNode는 그 텍스트 노드를 가리켜요. 적용은 둘 다 `textContent` 대입이에요. 대상이 `textarea`면 `.value`에도 대입해요([patch.md](patch.md#textarea의-text)).
 - **`REPLACE` 아래쪽:** 경로에 Patch를 내지 않아요. 새 서브트리는 `node` 하나로 만들어요.
-- **옛 값:** Patch에 싣지 않아요. Phase 2의 옛 이벤트 리스너는 요소별 맵에서 꺼내요([virtual-dom.md](virtual-dom.md#setprop)).
+- **옛 값:** Patch에 싣지 않아요. Phase 2의 이벤트 핸들러는 요소별 맵에 두고 `PROPS`가 오면 바꿔 끼워요([virtual-dom.md](virtual-dom.md#이벤트-위임)).
 
 ## Diff와 Patch 사이의 약속
 
@@ -193,11 +194,11 @@ Notion 문서와 다르면 이 저장소의 문서가 우선이에요. 바뀐 �
 
 - 언어와 테스트: [AGENTS.md](../../AGENTS.md)의 규칙을 따라요
 - 읽기: `<script>`와 `key` 속성 버림, 공백 판단, 이웃한 텍스트 합치기 ([virtual-dom.md](virtual-dom.md))
-- 쓰기: `style` 내용 이스케이프 안 함, `pre`·`textarea` 맨 앞 줄바꿈, 객체 속성 값 생략, `value` 프로퍼티 대상, 이벤트 맵은 `WeakMap`, invoker는 Phase 2 ([virtual-dom.md](virtual-dom.md))
+- 쓰기: `style` 내용 이스케이프 안 함, `pre`·`textarea` 맨 앞 줄바꿈, 객체 속성 값 생략, `value` 프로퍼티 대상, 이벤트 핸들러 맵은 `WeakMap`, 리스너는 Phase 2에서 영역에 위임 ([virtual-dom.md](virtual-dom.md))
 - key 목록의 같은 key, 다른 `type`: `REMOVE` + `CREATE` ([diff.md](diff.md#엣지-케이스))
 - 자가 검사: 속성 순서를 무시하고 비교 ([patch.md](patch.md#테스트))
 - Patch 도중 예외: 이전 상태로 복구 ([verify-page.md](verify-page.md#patch-실패))
-- 컴포넌트 반환값: VNode가 아니면 오류 ([component-hooks.md](component-hooks.md#expand))
+- 컴포넌트 반환값: 요소 VNode만 반환하는 규칙이고 검사하지 않음 ([component-hooks.md](component-hooks.md#expand))
 
 ## 검증 범위
 
