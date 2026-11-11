@@ -5,6 +5,7 @@ import {
   applyProps,
   createDOM,
   fromHTML,
+  listen,
   mountArea,
   readArea,
   setProp,
@@ -130,6 +131,192 @@ test("setProp: 대소문자가 섞인 on*도 직접 호출과 VNode 렌더에서
   el.dispatchEvent(new dom.window.Event("error"));
   assert.equal(calls, 0);
   assert.equal(addListener.mock.callCount(), 0);
+});
+
+describe("이벤트 위임", () => {
+  function setup() {
+    const container = document.createElement("section");
+    const parent = document.createElement("div");
+    const button = document.createElement("button");
+    parent.append(button);
+    container.append(parent);
+    listen(container);
+    return { container, parent, button };
+  }
+
+  test("listen은 영역마다 이벤트 종류별 리스너를 한 번만 붙여요", (t) => {
+    for (const container of [
+      document.createElement("div"),
+      document.createElement("div"),
+    ]) {
+      const addListener = t.mock.method(container, "addEventListener");
+      listen(container);
+      listen(container);
+      assert.deepEqual(
+        addListener.mock.calls.map(({ arguments: args }) => args[0]),
+        [
+          "click",
+          "dblclick",
+          "contextmenu",
+          "input",
+          "change",
+          "submit",
+          "keydown",
+          "keyup",
+          "focusin",
+          "focusout",
+        ],
+      );
+    }
+  });
+
+  test("click은 같은 이벤트로 한 번 호출하고 currentTarget은 영역이에요", (t) => {
+    const { container, button } = setup();
+    const addListener = t.mock.method(button, "addEventListener");
+    const calls: Event[] = [];
+    const currentTargets: (EventTarget | null)[] = [];
+    let nativeEvent: Event | undefined;
+    container.addEventListener("click", (event) => {
+      nativeEvent = event;
+    });
+    setProp(button, "onClick", (event) => {
+      calls.push(event);
+      currentTargets.push(event.currentTarget);
+    });
+    button.click();
+    assert.deepEqual(calls, [nativeEvent]);
+    assert.deepEqual(currentTargets, [container]);
+    assert.equal(addListener.mock.callCount(), 0);
+    assert.equal(button.hasAttribute("onclick"), false);
+  });
+
+  test("자식 → 부모로 전달하고 영역 자신의 핸들러는 부르지 않아요", () => {
+    const { container, parent, button } = setup();
+    const calls: string[] = [];
+    setProp(button, "onClick", () => calls.push("child"));
+    setProp(parent, "onClick", () => calls.push("parent"));
+    setProp(container, "onClick", () => calls.push("container"));
+    button.click();
+    container.click();
+    assert.deepEqual(calls, ["child", "parent"]);
+  });
+
+  test("자식이 DOM에서 부모까지 지워도 미리 모은 경로를 전달해요", () => {
+    const { parent, button } = setup();
+    const calls: string[] = [];
+    setProp(button, "onClick", () => {
+      calls.push("child");
+      button.remove();
+      parent.remove();
+    });
+    setProp(parent, "onClick", () => calls.push("parent"));
+    button.click();
+    assert.deepEqual(calls, ["child", "parent"]);
+  });
+
+  test("stopPropagation 뒤에는 부모를 부르지 않아요", () => {
+    const { parent, button } = setup();
+    const calls: string[] = [];
+    setProp(button, "onClick", (event) => {
+      calls.push("child");
+      event.stopPropagation();
+    });
+    setProp(parent, "onClick", () => calls.push("parent"));
+    button.click();
+    assert.deepEqual(calls, ["child"]);
+  });
+
+  test("대소문자와 무관하게 교체하고 함수가 아닌 값은 삭제해요", () => {
+    const { button } = setup();
+    const calls: string[] = [];
+    setProp(button, "onClick", () => calls.push("old"));
+    setProp(button, "ONCLICK", () => calls.push("new"));
+    button.click();
+    for (const next of [null, undefined, false, true, "code", 0, { x: "y" }]) {
+      setProp(button, "onClick", () => calls.push("removed"));
+      setProp(button, "onclick", next);
+      button.click();
+    }
+    assert.deepEqual(calls, ["new"]);
+  });
+
+  test("부모 핸들러는 호출 직전에 조회해요", () => {
+    const { parent, button } = setup();
+    const calls: string[] = [];
+    setProp(parent, "onClick", () => calls.push("old"));
+    setProp(button, "onClick", () => {
+      setProp(parent, "onClick", () => calls.push("new"));
+    });
+    button.click();
+    assert.deepEqual(calls, ["new"]);
+    setProp(button, "onClick", () => setProp(parent, "onClick", null));
+    button.click();
+    assert.deepEqual(calls, ["new"]);
+  });
+
+  test("contextmenu의 preventDefault는 원본 이벤트에 반영돼요", () => {
+    const { button } = setup();
+    setProp(button, "onContextMenu", (event) => event.preventDefault());
+    const event = new dom.window.Event("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+    });
+    assert.equal(button.dispatchEvent(event), false);
+    assert.equal(event.defaultPrevented, true);
+  });
+
+  test("모든 지원 이벤트의 종류와 input target을 전달해요", () => {
+    const { parent } = setup();
+    const input = document.createElement("input");
+    parent.append(input);
+    const calls: Event[] = [];
+    for (const name of [
+      "click",
+      "dblclick",
+      "contextmenu",
+      "input",
+      "change",
+      "submit",
+      "keydown",
+      "keyup",
+      "focusin",
+      "focusout",
+    ]) {
+      setProp(input, `on${name}`, (event) => {
+        calls.push(event);
+      });
+      input.dispatchEvent(new dom.window.Event(name, { bubbles: true }));
+      assert.equal(calls.at(-1)?.type, name);
+      assert.equal(calls.at(-1)?.target, input);
+    }
+    assert.equal(calls.length, 10);
+  });
+
+  test("텍스트 target은 건너뛰고 부모 요소부터 전달해요", () => {
+    const { button } = setup();
+    const text = document.createTextNode("버튼");
+    button.append(text);
+    const calls: Event[] = [];
+    setProp(button, "onClick", (event) => calls.push(event));
+    const event = new dom.window.Event("click", { bubbles: true });
+    text.dispatchEvent(event);
+    assert.deepEqual(calls, [event]);
+  });
+
+  test("미지원 이벤트, 버블링 없는 이벤트, listen 없는 영역은 호출하지 않아요", () => {
+    const { button } = setup();
+    let calls = 0;
+    for (const name of ["focus", "blur", "mouseenter"]) {
+      setProp(button, `on${name}`, () => calls++);
+      button.dispatchEvent(new dom.window.Event(name, { bubbles: true }));
+    }
+    setProp(button, "onClick", () => calls++);
+    button.dispatchEvent(new dom.window.Event("click"));
+    const unlistened = document.createElement("div");
+    unlistened.append(button);
+    button.click();
+    assert.equal(calls, 0);
+  });
 });
 
 test("setProp: checked와 selected는 빈 문자열도 켜짐이고 off면 꺼져요", () => {
