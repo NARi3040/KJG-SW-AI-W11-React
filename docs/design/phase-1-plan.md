@@ -134,7 +134,7 @@ flowchart LR
 
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
-| `isSame(a: VNode, b: VNode): boolean` | 내부 | `type`과 `key`가 모두 같은지 비교해요 | 같은 태그에 다른 key면 `false` |
+| `isSame(a: VNode, b: VNode): boolean` | 내부 | `type`과 `key`가 모두 같은지 비교해요. key는 SameValueZero예요([diff.md](diff.md#노드-비교)) | 같은 태그에 다른 key면 `false` |
 | `hasKey(list: VNode[]): boolean` | 내부 | key가 하나라도 있는지 봐요. `key != null`로 판단해요 | 테스트는 단계 9에서 `diff` 결과로 해요. 이 단계에서는 `diffChildren`이 부르지 않아요. key가 `0`이나 `""`인 노드가 있으면 `true`, key가 모두 `null`이면 `false` |
 | `diffProps(oldP: Props \| null, newP: Props \| null): { set: Props; remove: string[] } \| null` | 내부 | 바뀐 속성과 지운 속성을 구해요 | 같으면 `null`. `null`, `{ a: "1" }` → `set: { a: "1" }`, `remove: []` |
 | `diffUnkeyed(c1: VNode[], c2: VNode[], path: Path, out: Patch[]): void` | 내부 | 같은 위치끼리 비교, 남는 쪽은 `REMOVE` 또는 `CREATE` | `REMOVE`는 뒤 인덱스부터 |

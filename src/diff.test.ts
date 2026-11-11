@@ -485,6 +485,23 @@ describe("diff: key 판단 (hasKey)", () => {
     });
   }
 
+  // #81: isSame이 ===이면 NaN에서, Object.is면 0과 -0에서 REPLACE와 MOVE가 함께 나와요.
+  for (const [label, before, after] of [
+    ["NaN과 NaN", NaN, NaN],
+    ["0과 -0", 0, -0],
+  ] as const) {
+    test(`key ${label}은 같은 key라 재정렬하면 MOVE 1개`, () => {
+      const a = h("li", { key: "a" }, "a");
+      assert.deepEqual(
+        diff(
+          root(h("ul", null, a, h("li", { key: before }, "n"))),
+          root(h("ul", null, h("li", { key: after }, "n"), a)),
+        ),
+        [{ type: "MOVE", parentPath: [0], from: 1, to: 0 }],
+      );
+    });
+  }
+
   test("h로 만든 key 없는 목록(key가 null)은 위치 비교로 가요", () => {
     // key 비교였다면 뒤 공통 구간에서 li가 짝지어져 REMOVE 1개만 나와요.
     const li = h("li", null, "b");
