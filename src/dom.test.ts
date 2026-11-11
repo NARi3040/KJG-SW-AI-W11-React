@@ -21,6 +21,12 @@ beforeEach(() => {
 });
 afterEach(() => dom.window.close());
 
+test("createDOM: 객체 style의 cssFloat를 float로 반영해요", () => {
+  const el = createDOM(h("p", { style: { cssFloat: "left" } })) as HTMLElement;
+  assert.equal(el.style.cssFloat, "left");
+  assert.equal(el.style.getPropertyValue("float"), "left");
+});
+
 test("setProp: 일반 속성과 true, 빈 문자열, 숫자 0을 반영해요", () => {
   const el = document.createElement("input");
   setProp(el, "title", "설명");
@@ -574,9 +580,10 @@ describe("HTML 직렬화", () => {
           name: undefined,
           onClick: () => {},
           style: { color: "red" },
+          data: { value: "생략" },
         }),
       ),
-      '<input checked disabled value="0" title>',
+      '<input checked disabled value="0" title style="color: red">',
     );
   });
 
