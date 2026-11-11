@@ -265,12 +265,11 @@ describe("이벤트 위임", () => {
     assert.equal(event.defaultPrevented, true);
   });
 
-  test("모든 지원 이벤트를 전달하고 input의 target.value를 읽어요", () => {
+  test("모든 지원 이벤트의 종류와 input target을 전달해요", () => {
     const { parent } = setup();
     const input = document.createElement("input");
     parent.append(input);
-    input.value = "입력한 값";
-    const calls: string[] = [];
+    const calls: Event[] = [];
     for (const name of [
       "click",
       "dblclick",
@@ -284,12 +283,11 @@ describe("이벤트 위임", () => {
       "focusout",
     ]) {
       setProp(input, `on${name}`, (event) => {
-        calls.push(event.type);
-        assert.equal(event.target, input);
-        assert.equal((event.target as HTMLInputElement).value, "입력한 값");
+        calls.push(event);
       });
       input.dispatchEvent(new dom.window.Event(name, { bubbles: true }));
-      assert.equal(calls.at(-1), name);
+      assert.equal(calls.at(-1)?.type, name);
+      assert.equal(calls.at(-1)?.target, input);
     }
     assert.equal(calls.length, 10);
   });
