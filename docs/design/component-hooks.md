@@ -147,7 +147,7 @@ setter는 첫 렌더에 한 번 만들어 칸에 넣고, 다음 렌더부터는 
 |---|---|
 | `expand`: 컴포넌트 없음 | 입력과 같은 객체(`===`) |
 | `expand`: 중첩 | `A`가 `h(B)`를 돌려줘도 결과에 `COMPONENT` 플래그가 없음 |
-| `expand`: `children` 전달 | `h(Box, {}, "x")`에서 `Box`가 `props.children === "x"`를 받음. `h(Box, { children: "y" })`면 `"y"`, `h(Box, { children: "y" }, "x")`면 `"x"`, `h(Box, { children: "y" }, false)`면 `"y"`, `h(Box, {})`면 `null` |
+| `expand`: `children` 전달 | `h(Box, {}, "x")`에서 `Box`가 `props.children === "x"`를 받음. `h(Box, { children: "y" })`면 `"y"`, `h(Box, { children: "y" }, "x")`면 `"x"`, `h(Box, {})`면 `null` |
 | key 승계 | `h(Item, { key })`를 재정렬해도 Patch는 `MOVE`뿐이고 DOM 노드가 같은 객체(`===`). key가 `"a"`, `"b"`인 두 `Item`이 둘 다 key `"inner"`인 `li`를 돌려줘도 펼친 `li`의 key가 `"a"`, `"b"`. `Item`이 받은 props에 `key`가 없음 |
 | 캐시: 같은 props | 두 번째 `expand`에서 자식 함수 호출 0번, 결과가 지난 결과와 같은 객체 |
 | 캐시: 다른 props, 새 함수 prop | 자식 함수 호출 1번. `{ a: undefined }` → `{ b: undefined }`도 1번 |
