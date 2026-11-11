@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { JSDOM } from "jsdom";
 import { expand } from "./component.ts";
+import type { Memo } from "./component.ts";
 import { diff } from "./diff.ts";
 import { mountArea } from "./dom.ts";
 import { applyPatches } from "./patch.ts";
@@ -220,5 +221,301 @@ describe("expand: 불변", () => {
     assert.notEqual(list, (tree.children as VNode[])[1]);
     assert.equal(((tree.children as VNode[])[1].children as VNode[])[0], item);
     assert.equal(hasComponent(result), false);
+  });
+});
+
+function createRenderer(): (tree: VNode) => VNode {
+  let memo = new Map<string, Memo>();
+  return (tree) => {
+    const next = new Map<string, Memo>();
+    const out = expand(tree, memo, next);
+    memo = next;
+    return out;
+  };
+}
+
+function counted<P>(render: (props: P) => VNode): {
+  fn: (props: P) => VNode;
+  calls: { count: number };
+} {
+  const calls = { count: 0 };
+  const fn = (props: P) => {
+    calls.count++;
+    return render(props);
+  };
+  return { fn, calls };
+}
+
+describe("expand: 결과 캐시", () => {
+  test("같은 props면 자식 함수를 부르지 않고 지난 결과를 그대로 써요", () => {
+    const { fn: Cell, calls } = counted((p: { n: number }) =>
+      h("td", null, p.n),
+    );
+    const render = createRenderer();
+    const tree = () => h("tr", null, h(Cell, { n: 1 }));
+
+    const first = render(tree());
+    const second = render(tree());
+    const third = render(tree());
+
+    assert.equal(calls.count, 1);
+    const cell = (first.children as VNode[])[0];
+    assert.equal((second.children as VNode[])[0], cell);
+    assert.equal((third.children as VNode[])[0], cell);
+    assert.deepStrictEqual(diff(first, second), []);
+  });
+
+  test("prop이 늘거나 줄면 다른 props로 봐요", () => {
+    const { fn: Cell, calls } = counted((p: { a: number; b?: number }) =>
+      h("td", null, p.a),
+    );
+    const render = createRenderer();
+
+    render(h("tr", null, h(Cell, { a: 1 })));
+    render(h("tr", null, h(Cell, { a: 1, b: 2 })));
+    render(h("tr", null, h(Cell, { a: 1 })));
+
+    assert.equal(calls.count, 3);
+  });
+
+  test("같은 자리에서 props는 같고 컴포넌트만 바뀌면 새 컴포넌트를 불러요", () => {
+    const { fn: A, calls: aCalls } = counted((p: { n: number }) =>
+      h("td", null, "A", p.n),
+    );
+    const { fn: B, calls: bCalls } = counted((p: { n: number }) =>
+      h("td", null, "B", p.n),
+    );
+    const render = createRenderer();
+    const tree = (flag: boolean) =>
+      h("tr", null, flag ? h(A, { n: 1 }) : h(B, { n: 1 }));
+
+    render(tree(true));
+    const after = render(tree(false));
+
+    assert.equal(aCalls.count, 1);
+    assert.equal(bCalls.count, 1);
+    assert.equal((after.children as VNode[])[0].children, "B1");
+  });
+
+  test("형제 하나를 다시 쓰는 동안 사라진 다른 형제는 다시 나타나면 다시 불러요", () => {
+    const { fn: Row, calls } = counted((p: { label: string }) =>
+      h("li", null, p.label),
+    );
+    const render = createRenderer();
+    const one = h(Row, { key: 1, label: "x" });
+    const twelve = () => h(Row, { key: 12, label: "y" });
+
+    render(h("ul", null, one, twelve()));
+    render(h("ul", null, one));
+    render(h("ul", null, one, twelve()));
+
+    assert.equal(calls.count, 3);
+  });
+
+  test("key 없는 컴포넌트가 key 있는 요소를 돌려줘도 같은 props면 다시 써요", () => {
+    const { fn: Inner, calls } = counted((p: { label: string }) =>
+      h("li", { key: "inner" }, p.label),
+    );
+    const render = createRenderer();
+
+    render(h("ul", null, h(Inner, { label: "x" })));
+    render(h("ul", null, h(Inner, { label: "x" })));
+
+    assert.equal(calls.count, 1);
+  });
+
+  test("props가 바뀌거나 렌더마다 새 함수 prop이면 다시 불러요", () => {
+    const { fn: Cell, calls } = counted((p: { n: number }) =>
+      h("td", null, p.n),
+    );
+    const { fn: Button, calls: buttonCalls } = counted(
+      (p: { onClick: () => void }) => h("button", { onClick: p.onClick }),
+    );
+    const render = createRenderer();
+    const tree = (n: number) =>
+      h("tr", null, h(Cell, { n }), h(Button, { onClick: () => {} }));
+
+    render(tree(1));
+    render(tree(2));
+
+    assert.equal(calls.count, 2);
+    assert.equal(buttonCalls.count, 2);
+  });
+
+  test("{ a: undefined } → { b: undefined }도 다른 props로 봐요", () => {
+    const { fn: Spy, calls } = counted((_: { a?: undefined; b?: undefined }) =>
+      h("p"),
+    );
+    const render = createRenderer();
+
+    render(h("div", null, h(Spy, { a: undefined })));
+    render(h("div", null, h(Spy, { b: undefined })));
+
+    assert.equal(calls.count, 2);
+  });
+
+  test("props가 null과 {}면 다른 props로 봐요", () => {
+    const calls = { count: 0 };
+    const Spy = () => {
+      calls.count++;
+      return h("p");
+    };
+    const render = createRenderer();
+    const withNull = h(Spy);
+
+    render(h("div", null, withNull));
+    render(h("div", null, { ...withNull, props: {} }));
+
+    assert.equal(calls.count, 2);
+  });
+
+  test("children이 같은 문자열이면 다시 쓰고, 렌더마다 새 VNode 배열이면 다시 불러요", () => {
+    const { fn: Box, calls } = counted(
+      (p: { children?: VNode[] | string | null }) =>
+        h("section", null, p.children),
+    );
+    const render = createRenderer();
+
+    render(h("div", null, h(Box, {}, "x")));
+    render(h("div", null, h(Box, {}, "x")));
+    assert.equal(calls.count, 1);
+
+    render(h("div", null, h(Box, {}, h("b"))));
+    render(h("div", null, h(Box, {}, h("b"))));
+    assert.equal(calls.count, 3);
+  });
+
+  test("key 목록을 재정렬해도 자식 함수를 부르지 않아요", () => {
+    const { fn: Row, calls } = counted((p: { label: string }) =>
+      h("li", null, p.label),
+    );
+    const render = createRenderer();
+    const list = (labels: string[]) =>
+      h(
+        "ul",
+        null,
+        labels.map((label) => h(Row, { key: label, label })),
+      );
+
+    const before = render(list(["a", "b", "c"]));
+    const after = render(list(["c", "a", "b"]));
+
+    assert.equal(calls.count, 3);
+    const [c, a, b] = after.children as VNode[];
+    const [a0, b0, c0] = before.children as VNode[];
+    assert.ok(a === a0 && b === b0 && c === c0);
+    assert.deepStrictEqual(diff(before, after), [
+      { type: "MOVE", parentPath: [], from: 2, to: 0 },
+    ]);
+  });
+
+  test("자식 81개 중 1개만 바꾸면 자식 함수를 1번 불러요", () => {
+    const { fn: Cell, calls } = counted((p: { n: number }) =>
+      h("td", null, p.n),
+    );
+    const render = createRenderer();
+    const board = (values: number[]) =>
+      h(
+        "tr",
+        null,
+        values.map((n) => h(Cell, { n })),
+      );
+    const values = Array.from({ length: 81 }, (_, i) => i);
+
+    render(board(values));
+    const changed = values.slice();
+    changed[40] = -1;
+    render(board(changed));
+
+    assert.equal(calls.count, 82);
+  });
+
+  test("바깥만 다시 쓴 뒤 안쪽 1개만 바꾸면 항목 함수를 1번 불러요", () => {
+    const { fn: Row, calls } = counted((p: { label: string }) =>
+      h("li", null, p.label),
+    );
+    const List = (p: { items: string[] }) =>
+      h(
+        "ul",
+        null,
+        p.items.map((label) => h(Row, { label })),
+      );
+    const render = createRenderer();
+    const items = ["a", "b", "c"];
+
+    render(h("main", null, h(List, { items })));
+    render(h("main", null, h(List, { items })));
+    assert.equal(calls.count, 3);
+
+    render(h("main", null, h(List, { items: ["a", "B", "c"] })));
+    assert.equal(calls.count, 4);
+  });
+
+  test("자리 이름이 같고 key만 바뀌면 다시 불러서 결과 key가 새 key예요", () => {
+    const { fn: B, calls } = counted((p: { label: string }) =>
+      h("li", null, p.label),
+    );
+    const A = (p: { id: string }) => h(B, { key: p.id, label: "x" });
+    const render = createRenderer();
+
+    render(h("ul", null, h(A, { id: "a" })));
+    const after = render(h("ul", null, h(A, { id: "b" })));
+
+    assert.equal(calls.count, 2);
+    assert.equal((after.children as VNode[])[0].key, "b");
+  });
+
+  test("Infinity → -Infinity처럼 자리 이름이 같은 key로 바꿔도 다시 불러요", () => {
+    const { fn: Row, calls } = counted((p: { label: string }) =>
+      h("li", null, p.label),
+    );
+    const render = createRenderer();
+
+    render(h("ul", null, h(Row, { key: Infinity, label: "x" })));
+    const after = render(h("ul", null, h(Row, { key: -Infinity, label: "x" })));
+
+    assert.equal(calls.count, 2);
+    assert.equal((after.children as VNode[])[0].key, -Infinity);
+  });
+
+  test("prev, next 없이 부르면 캐시를 쓰지 않아요", () => {
+    const { fn: Cell, calls } = counted((p: { n: number }) =>
+      h("td", null, p.n),
+    );
+    const tree = () => h("tr", null, h(Cell, { n: 1 }));
+
+    expand(tree());
+    expand(tree());
+
+    assert.equal(calls.count, 2);
+  });
+
+  test("이번 렌더에 없던 자리는 사라져서, 다시 나타나면 다시 불러요", () => {
+    const { fn: Cell, calls } = counted((p: { n: number }) =>
+      h("td", null, p.n),
+    );
+    const render = createRenderer();
+
+    render(h("tr", null, h(Cell, { n: 1 })));
+    render(h("tr", null));
+    render(h("tr", null, h(Cell, { n: 1 })));
+
+    assert.equal(calls.count, 2);
+  });
+
+  test("같은 부모 아래 key가 중복돼도 결과는 캐시 없이 펼친 것과 같아요", () => {
+    const tree = (second: string) =>
+      h(
+        "ul",
+        null,
+        h(Item, { key: "a", label: "x" }),
+        h(Item, { key: "a", label: second }),
+      );
+    const render = createRenderer();
+
+    render(tree("y"));
+    const after = render(tree("z"));
+
+    assert.deepStrictEqual(after, expand(tree("z")));
   });
 });
