@@ -84,7 +84,7 @@ export interface VNode {
 | 필드 | 의미 | 허용 형식 | 예시 |
 |---|---|---|---|
 | `type` | 노드 종류. 다르면 Diff가 통째로 교체해요 | 소문자 태그 이름, 함수 컴포넌트, `TEXT_TYPE` | `"li"` |
-| `props` | 속성. 이름은 HTML 속성 이름이고, `key`는 들어가지 않아요. 없으면 `null`이에요. 요소의 `style`은 항상 문자열이에요. 컴포넌트 VNode에서는 컴포넌트가 받는 값 그대로라 배열이나 인자 있는 함수처럼 `PropValue`가 아닌 값이 들어 있을 수 있어요([`h` 오버로드](virtual-dom.md#h)). 컴포넌트 VNode는 `expand` 뒤에 남지 않아서 Diff와 Patch는 이 값을 보지 않아요. 이 변경은 #65(`common-format`)에서 정했어요 | `Props` 또는 `null` | `{ class: "list" }` |
+| `props` | 속성. 이름은 HTML 속성 이름이고, `key`는 들어가지 않아요. 없으면 `null`이에요. 요소의 `style`은 항상 문자열이에요. 컴포넌트 VNode에서는 컴포넌트가 받는 값 그대로라 배열이나 인자 있는 함수처럼 `PropValue`가 아닌 값이 들어 있을 수 있어요([`h` 오버로드](virtual-dom.md#h)). 필드 타입은 `Props | null` 그대로 두고, `h`가 형 변환해서 넣어요. 이 값을 읽는 곳은 컴포넌트에 넘기는 `expand`뿐이고, `Component`가 `(props: any) => VNode`라 그대로 넘길 수 있어요. 컴포넌트 VNode는 `expand` 뒤에 남지 않아서 Diff와 Patch는 이 값을 보지 않아요. 이 변경은 #65(`common-format`)에서 정했어요 | `Props` 또는 `null` | `{ class: "list" }` |
 | `key` | 형제 사이의 이름표. DOM에서 읽을 때는 `data-key` 값이에요 | 문자열, 숫자, `null` | `"vdom"` |
 | `children` | 자식. 텍스트 하나뿐이면 문자열, 아니면 배열, 없으면 `null`이에요. 텍스트 VNode는 항상 자기 내용 문자열이에요 | `VNode[]`, 문자열, `null` | `"하나"` |
 | `flags` | 노드 종류와 자식 종류를 합친 비트. `h`가 만들 때 한 번 계산해요 | 위 상수의 합 | `ELEMENT \| TEXT_CHILDREN` = 9 |

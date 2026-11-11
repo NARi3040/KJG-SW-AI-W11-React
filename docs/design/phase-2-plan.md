@@ -90,7 +90,7 @@ flowchart LR
 
 | 함수 | 공개 | 하는 일 | 완료 확인 |
 |---|---|---|---|
-| `h` (오버로드) | 공개 | 뼈대에서 시그니처만 추가해요. 단계 2에서 바꾸는 본문은 없어요 | `h(TodoList, { items: ["a"] })`, `h(Input, { onAdd: (t: string) => {} })`가 타입 검사를 통과. `h(TodoList, { wrong: 1 })`, `h("div", { items: [1] })`는 타입 오류(테스트 파일에 `// @ts-expect-error`로 둬요) |
+| `h` (오버로드) | 공개 | 뼈대에서 시그니처만 추가해요. 단계 2에서 바꾸는 본문은 없어요 | `h(TodoList, { items: ["a"] })`, `h(TodoList, { items: [], key: 1 })`, `h(Input, { onAdd: (t: string) => {} })`, `h(App)`, `h(App, null)`이 타입 검사를 통과(`App`은 매개변수 없는 컴포넌트). `h(TodoList)`, `h(TodoList, null)`, `h(TodoList, { wrong: 1 })`, `h("div", { items: [1] })`는 타입 오류(테스트 파일에 `// @ts-expect-error`로 둬요) |
 | `styleText(style: Record<string, string>): string` | 내부 | 객체 style을 `cssText` 문자열로 바꿔요 | `{ color: "red", fontSize: "12px" }` → `"color: red; font-size: 12px"`. `{ "--gap": "4px" }` → `"--gap: 4px"`. `{ color: "" }` → `""` |
 | `normalizeProps` (수정) | 내부 | 요소일 때만 `style` 객체를 `styleText`로 바꿔요. 결과가 빈 문자열이면 `style`을 지워요 | `h("p", { style: { color: "red" } }).props`가 `{ style: "color: red" }`. `h(Item, { style: { color: "red" } }).props.style`은 같은 객체. `h("p", { style: {} }).props`가 `null` |
 
@@ -112,7 +112,7 @@ flowchart LR
 |---|---|---|---|
 | `setProp` (수정) | 공개 | `on*`에 함수가 오면 요소별 핸들러 맵에 넣고, 아니면 그 이름을 지워요. 속성과 요소 리스너는 여전히 붙이지 않아요 | 기존 `on*` 테스트 두 개가 그대로 통과(요소의 `addEventListener` 0회) |
 | `listen(container: Element): void` | 공개 | 컨테이너에 위임 리스너를 붙여요. 같은 컨테이너에 다시 부르면 아무것도 하지 않아요 | 두 번 불러도 컨테이너의 `addEventListener`가 이벤트 종류 수만큼만 불림. `setProp(btn, "onClick", f)` 뒤 `btn.click()` → `f`가 그 이벤트로 1번 불림 |
-| `dispatch(container: Element, event: Event): void` | 내부 | `event.target`부터 컨테이너 직전까지의 요소를 먼저 모은 뒤 차례로 핸들러를 불러요 | 자식과 부모 핸들러가 자식 → 부모 순서. 자식 핸들러가 자기 요소를 DOM에서 떼어도 부모 핸들러가 불림. 자식이 `stopPropagation()`하면 부모는 안 불림. 핸들러를 바꾸면 새 함수만, `null`로 지우면 안 불림. `contextmenu` 핸들러의 `preventDefault()` 뒤 `defaultPrevented`가 `true`(이벤트는 `cancelable: true`로 만들어요) |
+| `dispatch(container: Element, event: Event): void` | 내부 | `event.target`부터 컨테이너 직전까지의 요소를 먼저 모은 뒤 차례로 핸들러를 불러요 | 자식과 부모 핸들러가 자식 → 부모 순서. 자식 핸들러가 자기 요소를 DOM에서 떼어도 부모 핸들러가 불림. 자식이 `stopPropagation()`하면 부모는 안 불림. 핸들러를 바꾸면 새 함수만, `null`로 지우면 안 불림. `contextmenu` 핸들러의 `preventDefault()` 뒤 `defaultPrevented`가 `true`(이벤트는 `cancelable: true`로 만들어요). 핸들러 안 `event.currentTarget`이 영역 |
 
 ## 노도현: `src/component.ts`
 
@@ -122,12 +122,12 @@ flowchart LR
 |---|---|---|---|
 | `expand(v: VNode, prev?: Map<string, Memo>, next?: Map<string, Memo>): VNode` | 공개 | 컴포넌트를 실행해 요소 VNode만 남겨요. `prev`, `next`가 있으면 캐시를 써요(단계 5) | 단계 4: [component-hooks.md의 테스트](component-hooks.md#테스트)의 `expand` 줄. 단계 5: 캐시 줄 |
 | `expandAt(v: VNode, slot: string, prev?, next?): VNode` | 내부 | 자리 이름(`slot`)을 들고 재귀해요 | `expand`로 확인 |
-| `sameProps(a: Props \| null, b: Props \| null): boolean` | 내부 | 키 수가 같고 모든 값이 `Object.is`로 같은지 | `{ a: 1 }`, `{ a: 1 }` → `true`. `{ f: () => {} }` 두 번 → `false`. `null`, `{}` → `false` |
+| `sameProps(a: Props \| null, b: Props \| null): boolean` | 내부 | 둘 다 `null`이거나, 키 수가 같고 `a`의 모든 키가 `b`에도 있으며 값이 `Object.is`로 같은지 | `{ a: 1 }`, `{ a: 1 }` → `true`. `null`, `null` → `true`. `{ a: 1 }`, `{ b: 1 }` → `false`. `{ a: undefined }`, `{ b: undefined }` → `false`. `{ f: () => {} }` 두 번 → `false`. `null`, `{}` → `false` |
 | `FunctionComponent` 생성자 `(container: Element, type: Component, props: Record<string, unknown> \| null = null)` | 공개 | 필드를 채워요. 렌더하지 않아요 | `tree`가 `null`, `hooks`가 `[]` |
-| `renderTree(): VNode` | 내부 | `hookIndex`와 `effects`를 비우고 `FunctionComponent.current`를 자신으로 둔 채 루트 함수를 실행해 펼쳐요. `finally`로 `current`를 되돌려요 | 루트 함수가 던져도 `current`가 이전 값 |
+| `renderTree(): VNode` | 내부 | `hookIndex`를 0으로 두고 `FunctionComponent.current`를 자신으로 둔 채 루트 함수를 실행해 펼쳐요. `finally`로 `current`를 되돌려요 | 루트 함수가 던져도 `current`가 이전 값 |
 | `mount(): void` | 공개 | `renderTree` → `listen(container)` → `mountArea` → `tree` 저장 → `runEffects` | 영역의 자식이 루트 하나. 핸들러를 단 버튼을 누르면 불림 |
 | `update(): Patch[]` | 공개 | `renderTree` → `diff(tree, 새 트리)` → `applyPatches` → `tree` 교체 → `runEffects`. 낸 Patch를 돌려줘요 | 바뀐 곳의 Patch만 나오고 나머지 노드는 같은 객체(`===`) |
-| `runEffects(): void` | 내부 | `effects`를 떼어 낸 뒤 차례로 실행해요 | `effects`에 손으로 넣은 작업 2개가 차례로 1번씩 불리고 `effects`가 빔. effect 안 `setState`는 단계 7에서 확인 |
+| `runEffects(): void` | 내부 | 실행 중이 아니면 `effects`가 빌 때까지 맨 앞 작업을 꺼내 실행해요. 실행 중이면 바로 돌아가요([`FunctionComponent`](component-hooks.md#functioncomponent)) | `effects`에 손으로 넣은 작업 2개가 차례로 1번씩 불리고 `effects`가 빔. 첫 작업이 작업 하나를 더 넣고 `runEffects()`를 다시 불러도, 넣은 작업은 첫 작업이 끝나고 두 번째 작업 뒤에 1번 불림. effect 안 `setState`는 단계 7에서 확인 |
 | `createRoot(container: Element, type: Component, props: Record<string, unknown> \| null = null): FunctionComponent` | 공개 | 인스턴스를 만들어 `mount()`하고 돌려줘요 | `createRoot(el, App).tree`가 `null`이 아님 |
 
 ## 노도현: `src/hooks.ts`

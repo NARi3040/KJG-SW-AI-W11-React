@@ -9,7 +9,7 @@
 | 관련 이슈 | #4, #8 |
 | 소스 파일 | `src/vnode.ts`, `src/dom.ts`, `src/dom.test.ts` |
 
-VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세요.
+VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세요. 괄호 안 번호(`5-1 A` 등)는 Notion 정리본의 안건 번호예요. 결정 내용은 [phase-2-plan.md의 결정 반영표](phase-2-plan.md#결정-반영표)에 있어요.
 
 ## 함수
 
@@ -32,7 +32,8 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 ## `h`
 
 ```ts
-function h<P>(type: (props: P) => VNode, props?: P | null, ...children: Child[]): VNode;
+function h<P>(type: (props: P) => VNode, props: P & { key?: Key | null }, ...children: Child[]): VNode;
+function h(type: () => VNode, props?: { key?: Key | null } | null, ...children: Child[]): VNode;
 function h(type: string, props?: Props | null, ...children: Child[]): VNode;
 ```
 
@@ -42,13 +43,17 @@ function h(type: string, props?: Props | null, ...children: Child[]): VNode;
 
 오버로드는 타입 검사만 나눠요. 구현은 하나이고, 컴포넌트 VNode의 `props` 필드에는 받은 값이 그대로 들어가요([vnode-spec.md의 VNode](vnode-spec.md#vnode)). `h(Item, { wrong: 1 })`처럼 컴포넌트의 props와 맞지 않거나 `h("div", { items: [1] })`처럼 요소에 `PropValue`가 아닌 값을 넣으면 타입 오류예요.
 
+- props를 받는 컴포넌트는 props를 꼭 넘겨요. `h(Item)`, `h(Item, null)`은 타입 오류예요. props가 모두 선택이어도 `h(Box, {}, "x")`처럼 `{}`를 넘겨요.
+- 매개변수가 없는 컴포넌트(`() => VNode`)는 `h(App)`, `h(App, null)`, `h(App, { key: 1 })`을 받아요.
+- `key`는 어느 컴포넌트에나 붙일 수 있고, 컴포넌트에는 넘어가지 않아요(아래 규칙 5).
+
 처리 규칙이에요.
 
 1. 중첩 배열을 평탄화하고 `null`, `undefined`, `true`, `false`를 버려요. `cond && h(A)`와 `list.map(...)`을 쓰기 위해서예요. 그다음 이웃한 문자열과 숫자를 하나로 합쳐요. 주석으로 나뉜 `<p>a<!--c-->b</p>`가 소스 `<p>ab</p>`를 다시 읽은 결과와 같아지게 하기 위해서예요.
 2. 남은 자식이 텍스트 하나면 `children`은 문자열이고 `TEXT_CHILDREN`이에요. 숫자는 문자열로 바꿔요.
 3. 남은 자식이 그 밖이면 `children`은 배열이고 `ARRAY_CHILDREN`이에요. 요소와 섞인 텍스트는 텍스트 VNode로 감싸요.
 4. 남은 자식이 없으면 `children`은 `null`이에요.
-5. `props`에서 `key`를 꺼내 최상위 필드로 옮겨요. `null`과 `undefined`만 key 없음(`null`)이에요. `0`과 `""`도 key예요. `type`이 문자열(요소)이고 `class`가 없으면 `className`을 `class`로 바꿔요. 요소의 `style`이 객체면 아래 [style 변환](#style-변환)으로 문자열로 바꿔요. 컴포넌트의 props는 바꾸지 않고 그대로 넘겨요. 컴포넌트가 받은 `className`을 읽을 수 있어야 하기 때문이에요. 남은 속성이 없으면 `props`는 `null`이에요.
+5. `props`에서 `key`를 꺼내 최상위 필드로 옮겨요. `null`과 `undefined`만 key 없음(`null`)이에요. `0`과 `""`도 key예요. 컴포넌트도 마찬가지라 컴포넌트가 받는 props에는 `key`가 없어요. `type`이 문자열(요소)이고 `class`가 없으면 `className`을 `class`로 바꿔요. 요소의 `style`이 객체면 아래 [style 변환](#style-변환)으로 문자열로 바꿔요. 컴포넌트의 props는 바꾸지 않고 그대로 넘겨요. 컴포넌트가 받은 `className`을 읽을 수 있어야 하기 때문이에요. 남은 속성이 없으면 `props`는 `null`이에요.
 6. `type`이 문자열이면 `ELEMENT`, 함수면 `COMPONENT`를 `flags`에 합쳐요.
 
 | 호출 | 결과 |
@@ -173,10 +178,11 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 
 Phase 2에서 구현해요(4-1 C). 요소마다 리스너를 붙이지 않고 루트 컴포넌트를 그린 영역에 이벤트 종류마다 리스너 하나를 붙여요. 렌더마다 핸들러가 새 함수여도 리스너를 붙였다 떼지 않고, 요소를 만들거나 지울 때 등록 작업이 없어요. Diff는 그대로라 새 함수면 `PROPS` Patch는 여전히 나와요. 그 Patch는 맵의 함수만 바꿔요.
 
-- **핸들러 맵:** `WeakMap<Element, Record<string, Listener>>`예요. `setProp(el, "onClick", f)`는 `el`의 기록에 `click: f`를 넣어요. 이벤트 이름은 `key.slice(2).toLowerCase()`예요(`onContextMenu` → `contextmenu`). 요소가 지워지면 맵에서도 사라져요.
+- **핸들러 맵:** `WeakMap<Element, Record<string, Listener>>`예요. `setProp(el, "onClick", f)`는 `el`의 기록에 `click: f`를 넣어요. 이벤트 이름은 `key.slice(2).toLowerCase()`예요. 그래서 대소문자는 상관없고(`onContextMenu`도 `contextmenu`), 이 문서는 아래 표의 `onContextmenu` 표기를 써요. `REMOVE` 때 맵에서 지우는 코드는 없어요. 지운 요소를 아무도 참조하지 않으면 `WeakMap`이 정리해요.
 - **`listen(container)`:** 아래 이벤트마다 `container.addEventListener(이름, 리스너)`를 한 번씩 불러요. 이미 붙인 영역은 `WeakSet`으로 기억해 다시 붙이지 않아요.
 - **전달:** 리스너는 먼저 `event.target`에서 `parentNode`를 따라 `container` 직전까지의 요소(`nodeType` 1)를 목록으로 모아요. 그다음 목록 순서대로 맵에서 `event.type`의 함수를 찾아 `fn(event)`로 불러요. 함수는 부르는 순간에 찾으므로 언제나 최신 핸들러예요. 부른 뒤 `event.cancelBubble`이 `true`면(핸들러가 `stopPropagation()`을 불렀으면) 멈춰요. 목록을 먼저 모으는 이유는 핸들러 안의 `setState`가 요소를 지우면 그 요소의 `parentNode`가 `null`이 되어 부모까지 못 가기 때문이에요.
 - `preventDefault()`는 같은 이벤트 객체라 그대로 동작해요.
+- **`event.currentTarget`은 영역이에요.** 리스너를 붙인 곳이 영역이라서, 핸들러를 단 요소가 아니에요. 핸들러를 단 요소가 필요하면 클로저로 잡거나 `event.target`을 써요. 입력창의 값은 `event.target.value`로 읽어요(입력창은 자식이 없어 `target`이 그 입력창이에요).
 
 | 위임하는 이벤트 | 쓰는 이름 |
 |---|---|
@@ -190,6 +196,7 @@ Phase 2에서 구현해요(4-1 C). 요소마다 리스너를 붙이지 않고 �
 | 위 표에 없는 이벤트(`onFocus`, `onBlur`, `onMouseenter` 등) | 맵에 들어가지만 불리지 않아요. `focus`, `blur`, `mouseenter`는 위로 올라오지 않아 영역에서 받을 수 없어요. 포커스는 `onFocusin`, `onFocusout`을 써요 |
 | `listen`을 부르지 않은 영역(검증 페이지) | 핸들러가 불리지 않아요. 검증 페이지는 HTML에서 읽어 `on*`이 없어요 |
 | 핸들러 안에서 `setState` | 즉시 다시 그려요. 리스너는 다시 그린 뒤 이벤트 시작 때 모은 목록의 나머지 요소로 이어서 가요. 그사이 지워진 요소의 핸들러도 맵에 남아 있으면 불려요 |
+| 영역 안에 `listen`한 다른 영역 | 지원하지 않아요. 바깥 영역의 리스너도 안쪽 요소까지 목록에 모아서 안쪽 핸들러가 두 번 불려요. 루트 컴포넌트는 영역 하나에 하나만 그려요 |
 | `dispatchEvent`로 만든 이벤트 | `bubbles: true`여야 영역까지 올라와요. `preventDefault()`를 확인하려면 `cancelable: true`도 필요해요. `el.click()`은 저절로 올라와요 |
 
 ## 엣지 케이스
@@ -234,7 +241,7 @@ Phase 2에서 구현해요(4-1 C). 요소마다 리스너를 붙이지 않고 �
 - `createDOM`: `select`의 `value`, `range`의 `min`/`max`/`value`, 읽어 온 `checked`, `value`가 있는 파일 입력.
 - `mountArea`: 생성이 실패하면 기존 내용이 그대로임.
 - `setProp`: 빈 `class` 없음, 문자열과 함수 `on*`이 모두 붙지 않음, 일반 속성을 문자열에서 객체 값으로 바꾸면 기존 속성 제거, 객체 값이면 `checked`·`selected`에 `false`를 대입하고 폼의 `value`에 빈 문자열 대입, `output`의 자식과 `li`의 `value`가 그대로임, `progress`에 잘못된 값을 넣어도 예외가 없음.
-- 이벤트 위임(Phase 2): 요소의 `addEventListener`는 0회, `listen`을 두 번 불러도 영역의 `addEventListener`는 위임하는 이벤트 수만큼만, 핸들러를 바꾸면 새 함수만 불림, `null`로 지우면 안 불림, 자식 → 부모 순서, `stopPropagation()` 뒤 부모 안 불림, `contextmenu`의 `preventDefault()` 뒤 `defaultPrevented`가 `true`.
+- 이벤트 위임(Phase 2): 요소의 `addEventListener`는 0회, `listen`을 두 번 불러도 영역의 `addEventListener`는 위임하는 이벤트 수만큼만, 핸들러를 바꾸면 새 함수만 불림, `null`로 지우면 안 불림, 자식 → 부모 순서, `stopPropagation()` 뒤 부모 안 불림, `contextmenu`의 `preventDefault()` 뒤 `defaultPrevented`가 `true`, 핸들러 안 `event.currentTarget`이 영역, `onInput` 핸들러에서 `event.target.value`가 입력한 값.
 
 ### 다양한 태그
 
