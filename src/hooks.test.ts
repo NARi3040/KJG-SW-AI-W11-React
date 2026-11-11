@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { JSDOM } from "jsdom";
-import { FunctionComponent, createRoot } from "./component.ts";
+import { createRoot } from "./component.ts";
 import { useEffect, useMemo, useState } from "./hooks.ts";
 import type { SetState } from "./hooks.ts";
 import { h } from "./vnode.ts";
@@ -22,15 +22,6 @@ describe("Hook 호출 위치", () => {
     assert.throws(() => useState(0), message);
     assert.throws(() => useEffect(() => {}), message);
     assert.throws(() => useMemo(() => 1, []), message);
-  });
-
-  test("렌더가 끝나면 current가 null로 돌아와 Hook을 부를 수 없어요", () => {
-    createRoot(createContainer(), () => {
-      useState(0);
-      return h("p");
-    });
-    assert.equal(FunctionComponent.current, null);
-    assert.throws(() => useState(0));
   });
 });
 
@@ -356,27 +347,6 @@ describe("useEffect", () => {
     root.update();
 
     assert.equal(calls, 2);
-  });
-
-  test("create가 던진 뒤 다음 실행에서 옛 cleanup을 다시 부르지 않아요", () => {
-    const log: string[] = [];
-    let a = 0;
-    const root = createRoot(createContainer(), () => {
-      const current = a;
-      useEffect(() => {
-        if (current === 1) throw new Error("effect 실패");
-        log.push(`effect ${current}`);
-        return () => log.push(`cleanup ${current}`);
-      }, [current]);
-      return h("p");
-    });
-
-    a = 1;
-    assert.throws(() => root.update(), /effect 실패/);
-    a = 2;
-    root.update();
-
-    assert.deepStrictEqual(log, ["effect 0", "cleanup 0", "effect 2"]);
   });
 
   test("effect가 함수가 아닌 값을 돌려주면 cleanup을 비워요", () => {

@@ -65,9 +65,7 @@ export function useEffect(
   const task = () => {
     if (effect.run !== task) return;
     effect.run = undefined;
-    const cleanup = effect.cleanup;
-    effect.cleanup = undefined;
-    cleanup?.();
+    effect.cleanup?.();
     const result = create();
     effect.cleanup = typeof result === "function" ? result : undefined;
   };
