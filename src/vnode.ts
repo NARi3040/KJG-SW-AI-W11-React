@@ -90,13 +90,16 @@ function normalizeChildren(raw: Child[]): {
   };
 }
 
+/** 객체 style을 CSS 문자열로 바꾸고 빈 값과 CSSOM 이름 예외를 처리해요. */
 function styleText(style: Record<string, string>): string {
   return Object.entries(style)
     .filter(([, value]) => value !== "")
     .map(([name, value]) => {
-      const cssName = name.startsWith("--")
+      let cssName = name.startsWith("--")
         ? name
         : name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      if (name === "cssFloat") cssName = "float";
+      else if (/^webkit[A-Z]/.test(name)) cssName = `-${cssName}`;
       return `${cssName}: ${value}`;
     })
     .join("; ");

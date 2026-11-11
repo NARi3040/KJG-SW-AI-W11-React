@@ -243,6 +243,13 @@ describe("h: style 변환", () => {
       "--gap: 4px; grid-template-columns: repeat(9, 2rem)",
     ],
     [{ WebkitTransition: "all 1s" }, "-webkit-transition: all 1s"],
+    [{ cssFloat: "left" }, "float: left"],
+    [{ webkitLineClamp: "2" }, "-webkit-line-clamp: 2"],
+    [{ webkitTransition: "all 1s" }, "-webkit-transition: all 1s"],
+    [
+      { "--cssFloat": "left", "--webkitLineClamp": "2" },
+      "--cssFloat: left; --webkitLineClamp: 2",
+    ],
     [{ "--MyGap": "4px" }, "--MyGap: 4px"],
     [{ color: "", fontSize: "12px" }, "font-size: 12px"],
     [{ color: "not-a-color" }, "color: not-a-color"],
