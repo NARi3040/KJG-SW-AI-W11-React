@@ -28,7 +28,7 @@ setState → 바로 update() → 루트 함수 실행 → expand로 자식 펼�
 
 `expand(v: VNode, prev?: Map<string, Memo>, next?: Map<string, Memo>): VNode`는 컴포넌트 VNode를 실행해 요소 VNode만 남겨요(2 C).
 
-- 컴포넌트면 `v.type({ ...v.props, children })`를 실행하고 결과를 다시 펼쳐요. `children`은 `v.children`이 `null`이 아니면(자식 인자가 있으면) `v.children`, 아니면 `v.props.children`, 둘 다 없으면 `null`이에요. 그래서 `h(Box, { children: x })`처럼 받은 자식을 props로 넘겨도 사라지지 않아요(2026-11-11 담당자 결정).
+- 컴포넌트면 `v.type({ ...v.props, children })`를 실행하고 결과를 다시 펼쳐요. `children`은 `v.children`이 `null`이 아니면(`h`가 정규화한 뒤 남은 자식이 있으면) `v.children`, 아니면 `v.props.children`, 둘 다 없으면 `null`이에요. `h(Box, { children: "y" }, false)`는 `false`가 버려져 `"y"`를 넘겨요. 그래서 `h(Box, { children: x })`처럼 받은 자식을 props로 넘겨도 사라지지 않아요(2026-11-11 담당자 결정).
 - 컴포넌트는 요소 VNode를 돌려줘야 해요. `null`, 문자열 반환은 지원하지 않고 검사하지도 않아요([제외한 안건](#제외한-안건)의 13).
 - 컴포넌트에 `key`가 있으면 결과의 `key`를 그 값으로 바꿔요. 결과에 이미 `key`가 있어도 덮어써요. 그래야 목록 재정렬 때 key 비교가 동작하고, key가 `"a"`, `"b"`인 두 `Item`이 둘 다 key `"inner"`인 요소를 돌려줘도 형제 key가 겹치지 않아요. 컴포넌트에 `key`가 없으면 결과의 `key`를 그대로 둬요.
 - `key`는 컴포넌트에 넘기지 않아요. `h`가 `props`에서 꺼내 VNode의 최상위 필드로 옮기기 때문이에요. 컴포넌트가 그 값이 필요하면 다른 이름의 prop으로 따로 넘겨요.
@@ -47,8 +47,8 @@ expand(h("ul", null, h(Item, { key: "a", label: "x" })));
 자식 컴포넌트는 props만 받는 순수 함수라서, 지난 렌더와 입력이 같으면 결과도 같아요. 그래서 `prev`와 `next`를 받으면 지난 결과를 다시 써요. 다시 쓴 결과는 지난 트리에 있던 **같은 객체**라서, `diff`가 `o === n`에서 바로 끝나 그 아래를 비교하지 않아요.
 
 - **자리 이름(`slot`):** 루트 결과는 `""`예요. 요소의 `i`번째 자식은 `부모 slot + "/" + i`, key가 있으면 `부모 slot + "/k" + JSON.stringify(key)`예요(`/k"a"`, `/k1`). 컴포넌트의 결과는 `컴포넌트 slot + ">"`예요. key로 이름을 지으면 목록 순서가 바뀌어도 같은 이름이에요. `JSON.stringify`로 감싸서 key `1`과 `"1"`, `/`나 `>`가 든 key도 다른 이름이 돼요.
-- **다시 쓰는 조건:** `prev.get(slot)`이 있고 `type`이 같고, `children`이 `Object.is`로 같고, props가 같을 때예요. props가 같다는 것은 지난 props와 이번 props가 둘 다 `null`이거나, 둘 다 객체이고 키 수가 같고 지난 props의 모든 키가 이번 props에도 있으며 값이 `Object.is`로 같다는 뜻이에요. 그래서 `{ a: undefined }`와 `{ b: undefined }`는 달라요. `null`과 `{}`도 달라요.
-- 다시 쓰면 그 `Memo`를 `next`에 그대로 넣고, `prev`에서 이름이 `slot + ">"`로 시작하는 항목(그 컴포넌트 안쪽의 자리)도 모두 `next`에 옮긴 뒤 `result`를 돌려줘요. 옮기지 않으면 다음 렌더에 바깥 컴포넌트가 다시 실행될 때 안쪽 컴포넌트가 모두 다시 실행돼요. 아니면 컴포넌트를 실행해 펼친 결과를 `{ type, props, children, result }`로 `next`에 넣어요. `result`에는 물려받은 `key`가 들어가 있어요.
+- **다시 쓰는 조건:** `prev.get(slot)`이 있고 `type`이 같고, `key`와 `children`이 각각 `Object.is`로 같고, props가 같을 때예요. 자리 이름이 같아도 `key`는 다를 수 있어서 따로 비교해요. 컴포넌트가 돌려준 컴포넌트의 자리 이름(`slot + ">"`)에는 key가 들어가지 않고, `JSON.stringify`는 `Infinity`, `-Infinity`, `NaN`을 모두 `"null"`로 바꿔요. 비교하지 않으면 옛 key가 담긴 결과를 다시 써서 key 승계가 깨져요(2026-11-11 담당자 결정). props가 같다는 것은 지난 props와 이번 props가 둘 다 `null`이거나, 둘 다 객체이고 키 수가 같고 지난 props의 모든 키가 이번 props에도 있으며 값이 `Object.is`로 같다는 뜻이에요. 그래서 `{ a: undefined }`와 `{ b: undefined }`는 달라요. `null`과 `{}`도 달라요.
+- 다시 쓰면 그 `Memo`를 `next`에 그대로 넣고, `prev`에서 이름이 `slot + ">"`로 시작하는 항목(그 컴포넌트 안쪽의 자리)도 모두 `next`에 옮긴 뒤 `result`를 돌려줘요. 옮기지 않으면 다음 렌더에 바깥 컴포넌트가 다시 실행될 때 안쪽 컴포넌트가 모두 다시 실행돼요. 아니면 컴포넌트를 실행해 펼친 결과를 `{ type, key, props, children, result }`로 `next`에 넣어요. `key`는 컴포넌트 VNode의 `key`예요. `result`에는 물려받은 `key`가 들어가 있어요.
 - `FunctionComponent`가 렌더마다 새 `Map`을 `next`로 넘기고, 끝나면 그것을 다음 렌더의 `prev`로 써요. 이번 렌더에 없던 자리는 사라져요.
 - 루트 컴포넌트는 캐시하지 않아요. `renderTree`가 루트 함수를 직접 실행해요.
 
@@ -59,6 +59,7 @@ expand(h("ul", null, h(Item, { key: "a", label: "x" })));
 | 자식으로 VNode 배열을 받음 | 아니오 | `children` 배열이 렌더마다 새 객체예요 |
 | key 없는 목록에서 앞 항목이 빠짐 | 뒤 항목은 아니오 | 뒤 항목의 인덱스가 바뀌어 자리 이름이 달라요 |
 | 다시 쓴 컴포넌트 안의 컴포넌트 | 예. 다음 렌더에 바깥만 다시 실행돼도 안쪽은 props가 같으면 다시 써요 | 다시 쓸 때 안쪽 자리를 `next`에 옮겨요 |
+| 자리 이름이 같고 `key`만 바뀜 | 아니오 | 예: `A`가 `h(B, { key: p.id, label: "x" })`를 돌려주고 `id`만 바뀜. 다시 쓰면 결과에 옛 key가 남아 `diff`가 교체하지 않아요 |
 
 다시 쓸 때 `prev`를 한 번 훑으므로 비용이 캐시 크기에 비례해요. 자식 수백 개 규모에서는 문제가 없다고 판단했어요.
 
@@ -130,7 +131,8 @@ setter는 첫 렌더에 한 번 만들어 칸에 넣고, 다음 렌더부터는 
 | 컴포넌트가 `null`이나 문자열 반환 | 지원하지 않아요. 검사하지 않아서 뒤의 `diff`나 `createDOM`에서 오류가 날 수 있어요 |
 | 루트 태그가 바뀜 | 경로 `[]`의 `REPLACE` |
 | 조건부 자식 `cond && h(A)` | `false`를 버려요. key가 없으면 뒤 형제의 위치가 바뀌어 캐시도 다시 실행해요 |
-| 같은 부모 아래 중복 key | 지원하지 않아요(2026-11-11 담당자 결정). 자리 이름이 겹쳐 뒤 형제가 앞 형제의 캐시 항목을 덮어써요. 다시 쓰기 전에 `type`, `children`, props를 비교하므로 화면은 맞고 캐시 적중만 줄어요. `JSON.stringify`가 같은 문자열을 내는 key(`Infinity`와 `-Infinity`는 둘 다 `"null"`)도 같아요 |
+| 같은 부모 아래 중복 key | 지원하지 않아요(2026-11-11 담당자 결정). 자리 이름이 겹쳐 뒤 형제가 앞 형제의 캐시 항목을 덮어써요. 다시 쓰기 전에 `type`, `key`, `children`, props를 비교하므로 화면은 맞고 캐시 적중만 줄어요 |
+| `JSON.stringify`가 같은 문자열을 내는 key | `Infinity`, `-Infinity`, `NaN`은 모두 `"null"`이 되어 자리 이름이 겹쳐요. `diff`의 key 비교에서는 `Infinity`와 `-Infinity`가 서로 다른 key예요. 한 렌더 안의 형제라면 중복 key와 같이 캐시 적중만 줄고, 렌더 사이에 key가 바뀌면 `key` 비교로 다시 실행해요 |
 | 렌더나 effect에서 예외 | 처리하지 않고 그대로 던져요. `FunctionComponent.current`만 `finally`로 되돌려요 |
 
 ## 테스트
@@ -143,13 +145,14 @@ setter는 첫 렌더에 한 번 만들어 칸에 넣고, 다음 렌더부터는 
 |---|---|
 | `expand`: 컴포넌트 없음 | 입력과 같은 객체(`===`) |
 | `expand`: 중첩 | `A`가 `h(B)`를 돌려줘도 결과에 `COMPONENT` 플래그가 없음 |
-| `expand`: `children` 전달 | `h(Box, {}, "x")`에서 `Box`가 `props.children === "x"`를 받음. `h(Box, { children: "y" })`면 `"y"`, `h(Box, { children: "y" }, "x")`면 `"x"`, `h(Box, {})`면 `null` |
+| `expand`: `children` 전달 | `h(Box, {}, "x")`에서 `Box`가 `props.children === "x"`를 받음. `h(Box, { children: "y" })`면 `"y"`, `h(Box, { children: "y" }, "x")`면 `"x"`, `h(Box, { children: "y" }, false)`면 `"y"`, `h(Box, {})`면 `null` |
 | key 승계 | `h(Item, { key })`를 재정렬해도 Patch는 `MOVE`뿐이고 DOM 노드가 같은 객체(`===`). key가 `"a"`, `"b"`인 두 `Item`이 둘 다 key `"inner"`인 `li`를 돌려줘도 펼친 `li`의 key가 `"a"`, `"b"`. `Item`이 받은 props에 `key`가 없음 |
 | 캐시: 같은 props | 두 번째 `expand`에서 자식 함수 호출 0번, 결과가 지난 결과와 같은 객체 |
 | 캐시: 다른 props, 새 함수 prop | 자식 함수 호출 1번. `{ a: undefined }` → `{ b: undefined }`도 1번 |
 | 캐시: key 목록 재정렬 | 자식 함수 호출 0번 |
 | 캐시: 자식 81개 중 1개 변경 | 자식 함수 호출 1번 |
 | 캐시: 바깥만 다시 쓴 뒤 안쪽 1개 변경 | 목록을 감싼 컴포넌트를 한 번 다시 쓰고(props 같음), 다음 렌더에 항목 하나만 바꾸면 항목 함수 호출 1번 |
+| 캐시: `key`만 바뀜 | `A`가 `h(B, { key: p.id, label: "x" })`를 돌려줄 때 `id`만 바꾸면 `B` 호출 1번, 결과 key가 새 `id`. `Infinity` → `-Infinity`처럼 자리 이름이 같은 key로 바꿔도 1번 |
 | `mount` | 영역의 자식이 루트 하나, `tree`가 `null`이 아님 |
 | `renderTree` 예외 | 루트 함수가 던진 뒤 `FunctionComponent.current`가 `null` |
 | 변경분만 반영 | 상태 하나를 바꾸면 `update()`가 해당 Patch만 돌려주고, 나머지 노드가 같은 객체(`===`) |
