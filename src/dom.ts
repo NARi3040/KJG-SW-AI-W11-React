@@ -223,3 +223,7 @@ export function mountArea(container: Element, vnode: VNode): void {
   // 먼저 만들고 바꿔야 생성이 실패해도 기존 영역이 남아요
   container.replaceChildren(createDOM(vnode));
 }
+
+export function listen(container: Element): void {
+  throw new Error("미구현");
+}
