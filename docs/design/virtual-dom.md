@@ -5,8 +5,8 @@
 | 항목 | 내용 |
 |---|---|
 | 상태 | 공통 형식 합의 완료 ([vnode-spec.md](vnode-spec.md)) |
-| 다루는 요구사항 | R1-1, R1-4, R3-2, R3-3 |
-| 관련 이슈 | #4 |
+| 다루는 요구사항 | R1-1, R1-4, R3-2, R3-3. Phase 2에서 바뀌는 부분(`h` 오버로드, style 변환, [이벤트 위임](#이벤트-위임))은 R2-3, R2-4 |
+| 관련 이슈 | #4, #8 |
 | 소스 파일 | `src/vnode.ts`, `src/dom.ts`, `src/dom.test.ts` |
 
 VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세요.
@@ -27,12 +27,20 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 | `mountArea(container, vnode)` | `dom.ts` | `container: Element`, `vnode: VNode` | 없음. 새로 그린 뒤 영역의 내용을 바꿔요 |
 | `setProp(el, key, next)` | `dom.ts` | `el: Element`, `key: string`, `next: PropValue` | 없음 |
 | `applyProps(el, props)` | `dom.ts` | `el: Element`, `props: Props` | 없음. `value` 외 속성을 먼저, `value`를 마지막에 `setProp`해요 |
+| `listen(container)` | `dom.ts` | `container: Element`: 루트 컴포넌트를 그린 영역 | 없음. [이벤트 위임](#이벤트-위임) 리스너를 붙여요 |
 
 ## `h`
 
+```ts
+function h<P>(type: (props: P) => VNode, props?: P | null, ...children: Child[]): VNode;
+function h(type: string, props?: Props | null, ...children: Child[]): VNode;
+```
+
 - `type`: 태그 이름(`"div"`) 또는 함수 컴포넌트.
-- `props`: 속성 객체 또는 `null`. `key`, `className`을 받을 수 있어요. (예: `{ key: "a", class: "box" }`)
+- `props`: 요소면 `Props` 또는 `null`이에요. `key`, `className`을 받을 수 있어요. (예: `{ key: "a", class: "box" }`) 컴포넌트면 그 컴포넌트가 받는 props 타입 `P`예요. 배열이나 인자 있는 함수도 넘길 수 있어요. (예: `h(Counter, { count, setCount })`)
 - `children`: VNode, 문자열, 숫자, `null`, `undefined`, 불리언, 또는 이것들의 중첩 배열.
+
+오버로드는 타입 검사만 나눠요. 구현은 하나이고, 컴포넌트 VNode의 `props` 필드에는 받은 값이 그대로 들어가요([vnode-spec.md의 VNode](vnode-spec.md#vnode)). `h(Item, { wrong: 1 })`처럼 컴포넌트의 props와 맞지 않거나 `h("div", { items: [1] })`처럼 요소에 `PropValue`가 아닌 값을 넣으면 타입 오류예요.
 
 처리 규칙이에요.
 
@@ -40,7 +48,7 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 2. 남은 자식이 텍스트 하나면 `children`은 문자열이고 `TEXT_CHILDREN`이에요. 숫자는 문자열로 바꿔요.
 3. 남은 자식이 그 밖이면 `children`은 배열이고 `ARRAY_CHILDREN`이에요. 요소와 섞인 텍스트는 텍스트 VNode로 감싸요.
 4. 남은 자식이 없으면 `children`은 `null`이에요.
-5. `props`에서 `key`를 꺼내 최상위 필드로 옮겨요. `null`과 `undefined`만 key 없음(`null`)이에요. `0`과 `""`도 key예요. `type`이 문자열(요소)이고 `class`가 없으면 `className`을 `class`로 바꿔요. 컴포넌트의 props는 바꾸지 않고 그대로 넘겨요. 컴포넌트가 받은 `className`을 읽을 수 있어야 하기 때문이에요. 남은 속성이 없으면 `props`는 `null`이에요.
+5. `props`에서 `key`를 꺼내 최상위 필드로 옮겨요. `null`과 `undefined`만 key 없음(`null`)이에요. `0`과 `""`도 key예요. `type`이 문자열(요소)이고 `class`가 없으면 `className`을 `class`로 바꿔요. 요소의 `style`이 객체면 아래 [style 변환](#style-변환)으로 문자열로 바꿔요. 컴포넌트의 props는 바꾸지 않고 그대로 넘겨요. 컴포넌트가 받은 `className`을 읽을 수 있어야 하기 때문이에요. 남은 속성이 없으면 `props`는 `null`이에요.
 6. `type`이 문자열이면 `ELEMENT`, 함수면 `COMPONENT`를 `flags`에 합쳐요.
 
 | 호출 | 결과 |
@@ -51,6 +59,24 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 | `h("li", { key: "a", className: "x" })` | `{ type: "li", props: { class: "x" }, key: "a", children: null, flags: 1 }` |
 | `h(Item, { className: "x" })` | `{ type: Item, props: { className: "x" }, key: null, children: null, flags: 4 }`. 컴포넌트라 `className`이 그대로예요 |
 | `h("ul", null, false, null, [h("li"), [h("li")]])` | `children`은 `li` 2개의 배열 |
+| `h("p", { style: { color: "red", fontSize: "12px" } })` | `props`는 `{ style: "color: red; font-size: 12px" }` |
+| `h(Item, { style: { color: "red" } })` | `props.style`은 입력한 객체 그대로예요 |
+
+### style 변환
+
+렌더마다 `style: { ... }`를 새로 만들어도 Diff가 문자열끼리 비교해 같은 값이면 `PROPS`를 내지 않게 하려고 바꿔요(4-2 C). DOM에서 읽은 VNode의 `style`도 문자열이라 형식이 하나로 맞아요.
+
+- 키를 넣은 순서대로 `이름: 값`을 `"; "`로 이어요. 끝에 `;`를 붙이지 않아요.
+- 이름의 대문자는 `-`와 소문자로 바꿔요. `fontSize` → `font-size`, `WebkitTransition` → `-webkit-transition`. `--`로 시작하는 사용자 정의 속성은 그대로 둬요.
+- 값이 빈 문자열인 키는 빼요. 결과가 빈 문자열이면 `style` 키를 지워요.
+- 값은 검사하지 않아요. 브라우저가 받지 않는 값은 `cssText`에 넣을 때 무시돼요.
+
+| 입력 | 결과 |
+|---|---|
+| `{ color: "red", fontSize: "12px" }` | `"color: red; font-size: 12px"` |
+| `{ "--gap": "4px", gridTemplateColumns: "repeat(9, 2rem)" }` | `"--gap: 4px; grid-template-columns: repeat(9, 2rem)"` |
+| `{ color: "" }`, `{}` | `style` 키 없음 |
+| `"color: red"` | 그대로 |
 
 ## DOM → VNode
 
@@ -90,7 +116,7 @@ VNode와 `flags`의 정의는 [vnode-spec.md](vnode-spec.md#vnode)를 봐 주세
 
 `toHTML`의 규칙이에요.
 
-- 값이 `null`, `undefined`, `false`이거나 함수, 객체인 속성은 쓰지 않아요. 그래서 객체로 넣은 `style`은 `toHTML`과 Patch 로그에 나오지 않아요.
+- 값이 `null`, `undefined`, `false`이거나 함수, 객체인 속성은 쓰지 않아요. 객체 `style`은 `h`가 [문자열로 바꿔서](#style-변환) `toHTML`과 Patch 로그에 나와요.
 - 값이 `true`나 빈 문자열인 속성은 이름만 써요. (예: `<input checked>`)
 - 속성 값과 텍스트의 `&`, `<`, `>`, `"`를 이스케이프해요.
 - `style`, `xmp`, `iframe`, `noembed`, `noframes`의 내용은 이스케이프하지 않아요. 파서가 이 내용의 문자 참조를 풀지 않아서, 이스케이프하면 Patch할 때마다 내용이 바뀌어요.
@@ -131,9 +157,9 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 
 | `key` | 처리 | 이유 |
 |---|---|---|
-| `on`으로 시작 | **Phase 1:** 아무것도 하지 않아요. 속성으로도 리스너로도 붙이지 않아요. **Phase 2:** 아래 invoker 규칙을 따라요 | 문자열로 넣어도 실행 코드가 들어가지 않아요 |
+| `on`으로 시작 | 속성으로도 요소 리스너로도 붙이지 않아요. 값이 함수면 [이벤트 위임](#이벤트-위임)의 핸들러 맵에 넣고, 아니면 맵에서 그 이름을 지워요 | 문자열로 넣어도 실행 코드가 들어가지 않아요 |
 | `class` | `off`면 속성 제거, 아니면 `className` 대입 | 비우기만 하면 `class=""`가 남아요 |
-| `style` | `off`면 속성 제거. 문자열이면 `cssText` 대입. 객체면 `cssText`를 비우고 `el.style`에 복사(키는 camelCase) | DOM에서 읽은 스타일은 문자열이에요 |
+| `style` | `off`면 속성 제거. 문자열이면 `cssText` 대입. 객체면 `cssText`를 비우고 `el.style`에 복사(키는 camelCase). `h`로 만든 VNode에는 객체가 없지만 `setProp`을 직접 부르는 경우를 위해 남겨요 | DOM에서 읽은 스타일은 문자열이에요 |
 | 그 밖 | `off`면 `removeAttribute`, 아니면 `setAttribute`를 써요. 값이 `true`면 빈 문자열이에요 | DOM을 다시 읽었을 때 VNode와 같아야 해요 |
 
 "그 밖" 줄을 적용한 뒤 아래 경우에는 프로퍼티도 함께 바꿔요.
@@ -143,7 +169,28 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 | `checked`, `selected` (`el`에 그 프로퍼티가 있을 때) | 프로퍼티에 `!off`를 대입 | 사용자가 바꾼 뒤에는 프로퍼티가 현재 상태예요. 읽어 온 값 `""`도 켜짐이에요 |
 | `value` (`el`이 `input`, `select`, `textarea`일 때) | 프로퍼티에 대입, `off`면 빈 문자열. `type`이 `file`인 `input`에는 대입하지 않아요 | 이 요소들의 현재값은 프로퍼티예요. 다른 요소에는 대입하지 않아요. `output`은 자식이 지워져 경로가 어긋나고, `li`는 값이 `0`으로 바뀌고, `progress`는 예외가 나요. 파일 입력의 `value` 프로퍼티는 빈 문자열만 받아 `InvalidStateError`가 나요. 속성은 그대로 남아요 |
 
-**invoker 규칙** (Phase 2에서 구현해요. Phase 1에는 함수 리스너를 쓰는 곳이 없어요): 이벤트 이름은 `key.slice(2).toLowerCase()`예요. 요소마다 "이벤트 이름 → invoker" 맵을 `WeakMap<Element, Record<string, Invoker>>`에 둬요. invoker는 현재 함수(`fn`)를 호출하는 리스너예요. 처음 한 번만 `addEventListener`하고, 이후에는 `fn`만 바꿔요. 값이 함수가 아니면 있던 리스너를 떼요. 렌더마다 새로 생기는 화살표 함수 때문에 매번 붙였다 떼지 않기 위해서예요.
+## 이벤트 위임
+
+Phase 2에서 구현해요(4-1 C). 요소마다 리스너를 붙이지 않고 루트 컴포넌트를 그린 영역에 이벤트 종류마다 리스너 하나를 붙여요. 렌더마다 핸들러가 새 함수여도 리스너를 붙였다 떼지 않고, 요소를 만들거나 지울 때 등록 작업이 없어요. Diff는 그대로라 새 함수면 `PROPS` Patch는 여전히 나와요. 그 Patch는 맵의 함수만 바꿔요.
+
+- **핸들러 맵:** `WeakMap<Element, Record<string, Listener>>`예요. `setProp(el, "onClick", f)`는 `el`의 기록에 `click: f`를 넣어요. 이벤트 이름은 `key.slice(2).toLowerCase()`예요(`onContextMenu` → `contextmenu`). 요소가 지워지면 맵에서도 사라져요.
+- **`listen(container)`:** 아래 이벤트마다 `container.addEventListener(이름, 리스너)`를 한 번씩 불러요. 이미 붙인 영역은 `WeakSet`으로 기억해 다시 붙이지 않아요.
+- **전달:** 리스너는 먼저 `event.target`에서 `parentNode`를 따라 `container` 직전까지의 요소(`nodeType` 1)를 목록으로 모아요. 그다음 목록 순서대로 맵에서 `event.type`의 함수를 찾아 `fn(event)`로 불러요. 함수는 부르는 순간에 찾으므로 언제나 최신 핸들러예요. 부른 뒤 `event.cancelBubble`이 `true`면(핸들러가 `stopPropagation()`을 불렀으면) 멈춰요. 목록을 먼저 모으는 이유는 핸들러 안의 `setState`가 요소를 지우면 그 요소의 `parentNode`가 `null`이 되어 부모까지 못 가기 때문이에요.
+- `preventDefault()`는 같은 이벤트 객체라 그대로 동작해요.
+
+| 위임하는 이벤트 | 쓰는 이름 |
+|---|---|
+| `click`, `dblclick`, `contextmenu` | `onClick`, `onDblclick`, `onContextmenu` |
+| `input`, `change`, `submit` | `onInput`, `onChange`, `onSubmit` |
+| `keydown`, `keyup` | `onKeydown`, `onKeyup` |
+| `focusin`, `focusout` | `onFocusin`, `onFocusout` |
+
+| 상황 | 처리 |
+|---|---|
+| 위 표에 없는 이벤트(`onFocus`, `onBlur`, `onMouseenter` 등) | 맵에 들어가지만 불리지 않아요. `focus`, `blur`, `mouseenter`는 위로 올라오지 않아 영역에서 받을 수 없어요. 포커스는 `onFocusin`, `onFocusout`을 써요 |
+| `listen`을 부르지 않은 영역(검증 페이지) | 핸들러가 불리지 않아요. 검증 페이지는 HTML에서 읽어 `on*`이 없어요 |
+| 핸들러 안에서 `setState` | 즉시 다시 그려요. 리스너는 다시 그린 뒤 이벤트 시작 때 모은 목록의 나머지 요소로 이어서 가요. 그사이 지워진 요소의 핸들러도 맵에 남아 있으면 불려요 |
+| `dispatchEvent`로 만든 이벤트 | `bubbles: true`여야 영역까지 올라와요. `preventDefault()`를 확인하려면 `cancelable: true`도 필요해요. `el.click()`은 저절로 올라와요 |
 
 ## 엣지 케이스
 
@@ -179,7 +226,7 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 
 ### 검사
 
-- `h` 정규화: 위 표의 호출 전부.
+- `h` 정규화: 위 표의 호출 전부와 [style 변환](#style-변환)의 표. 오버로드는 `// @ts-expect-error`를 단 줄로 타입 오류를 확인해요.
 - 읽기: 위 입력·출력 표, 공백 규칙과 합치는 순서(위 두 표), `pre` 유지, `&nbsp;` 유지, `data-key`, `key` 속성 버림, `=`로 시작하는 속성 버림, 거짓 값 key.
 - 왕복: [무작위 입력](#무작위-입력)에서 `fromHTML(sourceOf(v))`가 `v`와 같은지.
 - 소스 왕복: `fromHTML(sourceOf(fromHTML(x)))`가 `fromHTML(x)`와 같은지. `x`는 `<p>a<!--c-->b</p>`, `<pre>\n\nabc</pre>`, `<textarea>\n\n</textarea>`, `<pre><div><b>x</b><i>y</i></div></pre>`, `<ul><li key="x">a</li></ul>`, `<li data-key="y" key="x">a</li>`, `<p><b>a</b> <i>b</i></p>`, `<p><b>a</b>\n<i>b</i></p>`, `<p>a<!--x-->\n<b>b</b></p>`, `<p>\n<!--x--> <b>b</b></p>`, `<li> <b>x</b></li>`, `<ul>\n  <li>a</li>\n  <li>b</li>\n</ul>`예요. 무작위 입력은 규칙대로 만든 입력만 써서 이런 경우를 잡지 못해요.
@@ -187,7 +234,7 @@ fromHTML("<ul><li>a</li><li>b</li></ul>")를 sourceOf로 바꾼 결과
 - `createDOM`: `select`의 `value`, `range`의 `min`/`max`/`value`, 읽어 온 `checked`, `value`가 있는 파일 입력.
 - `mountArea`: 생성이 실패하면 기존 내용이 그대로임.
 - `setProp`: 빈 `class` 없음, 문자열과 함수 `on*`이 모두 붙지 않음, 일반 속성을 문자열에서 객체 값으로 바꾸면 기존 속성 제거, 객체 값이면 `checked`·`selected`에 `false`를 대입하고 폼의 `value`에 빈 문자열 대입, `output`의 자식과 `li`의 `value`가 그대로임, `progress`에 잘못된 값을 넣어도 예외가 없음.
-- Phase 2에서 추가: 핸들러를 교체해도 `addEventListener`는 1회, 새 핸들러 호출, 제거 시 해제.
+- 이벤트 위임(Phase 2): 요소의 `addEventListener`는 0회, `listen`을 두 번 불러도 영역의 `addEventListener`는 위임하는 이벤트 수만큼만, 핸들러를 바꾸면 새 함수만 불림, `null`로 지우면 안 불림, 자식 → 부모 순서, `stopPropagation()` 뒤 부모 안 불림, `contextmenu`의 `preventDefault()` 뒤 `defaultPrevented`가 `true`.
 
 ### 다양한 태그
 
