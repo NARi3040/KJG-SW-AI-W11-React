@@ -420,6 +420,29 @@ test("applyPatches: key 비교 예시의 Patch 목록을 적용하면 새 HTML�
   );
 });
 
+test("applyPatches: NaN key 형제를 재정렬해도 예외 없이 새로 그린 것과 같아요", () => {
+  const area = createEmptyArea();
+  const expected = document.createElement("div");
+  const oldV = h(
+    "ul",
+    null,
+    h("li", { key: "a" }, "a"),
+    h("li", { key: NaN }, "n"),
+  );
+  const newV = h(
+    "ul",
+    null,
+    h("li", { key: NaN }, "n"),
+    h("li", { key: "a" }, "a"),
+  );
+  mountArea(area, oldV);
+  mountArea(expected, newV);
+
+  applyPatches(area, diff(oldV, newV));
+
+  assert.equal(area.innerHTML, expected.innerHTML);
+});
+
 test("applyPatches: 텍스트 하나만 바꾸면 Patch 1개와 DOM 변경 1건이에요", () => {
   const area = createArea("<p>a</p>");
   const oldV = fromHTML("<p>a</p>");

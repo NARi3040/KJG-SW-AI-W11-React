@@ -73,6 +73,7 @@ key가 없을 때 쓰는 기본 경로예요. DOM에서 읽은 VNode는 `data-ke
 
 - **경로:** 짝지은 노드의 안쪽 비교는 옛 인덱스로 경로를 붙여요.
 - **key 판단:** `null`과 `undefined`만 key 없음이에요. `0`과 `""`도 key예요. `hasKey`와 key 맵이 모두 `key != null`로 판단해요.
+- **같은 key:** `isSame`과 key 맵은 같은 기준(SameValueZero)으로 비교해요. `NaN`끼리 같고, `0`과 `-0`도 같아요. 기준이 다르면 4단계에서 짝지은 노드를 `diffNode`가 `REPLACE`하고 5단계가 같은 노드를 `MOVE`해서 `applyPatches`가 예외를 던져요(#81).
 - **짝을 못 찾는 경우:** 새 위치가 없거나, 그 자리가 이미 찼거나, `type`이 다르면 `REMOVE`해요.
 - **`REMOVE` 순서:** 이전 구간을 도는 순서 그대로, 이전 인덱스 오름차순으로 내요. `diffNode`가 내는 안쪽 Patch와 섞여 나와요. `applyPatches`가 대상을 먼저 찾아 두므로 결과 DOM은 같아요.
 - **key 없는 노드:** 맵에 넣지 않아요. 아직 짝이 없는 같은 타입의 key 없는 새 노드를 앞에서부터 찾아요.

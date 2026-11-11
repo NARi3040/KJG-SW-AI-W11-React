@@ -43,8 +43,12 @@ export function lis(arr: number[]): number[] {
 }
 
 // type과 key가 모두 같아야 같은 노드로 봐요. 다르면 REPLACE예요.
+// key는 key 맵(Map)과 같은 SameValueZero로 비교해요. 기준이 다르면 REPLACE와 MOVE가 함께 나와요(#81).
 function isSame(a: VNode, b: VNode): boolean {
-  return a.type === b.type && a.key === b.key;
+  return (
+    a.type === b.type &&
+    (a.key === b.key || (Number.isNaN(a.key) && Number.isNaN(b.key)))
+  );
 }
 
 // null과 undefined만 key 없음이에요. 0과 ""도 key예요.
