@@ -234,3 +234,29 @@ describe("h: props 정규화", () => {
     assert.notStrictEqual(node.props, props);
   });
 });
+
+describe("h: 오버로드 타입", () => {
+  // 타입 검사가 확인해요. 실행은 오류 없이 VNode를 만드는지만 봐요
+  const TodoList = (props: { items: string[] }) => h("ul", null, props.items);
+  const Input = (props: { onAdd: (text: string) => void }) => h("input");
+  const App = () => h("div");
+
+  it("컴포넌트의 props 타입을 받는다", () => {
+    h(TodoList, { items: ["a"] });
+    h(TodoList, { items: [], key: 1 });
+    h(Input, { onAdd: (t: string) => {} });
+    h(App);
+    h(App, null);
+  });
+
+  it("맞지 않는 props는 타입 오류다", () => {
+    // @ts-expect-error props를 받는 컴포넌트는 props를 꼭 넘겨요
+    h(TodoList);
+    // @ts-expect-error props를 받는 컴포넌트는 null을 받지 않아요
+    h(TodoList, null);
+    // @ts-expect-error 컴포넌트의 props와 맞지 않아요
+    h(TodoList, { wrong: 1 });
+    // @ts-expect-error 요소에는 PropValue만 넣어요
+    h("div", { items: [1] });
+  });
+});

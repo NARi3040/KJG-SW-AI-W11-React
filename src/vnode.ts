@@ -107,6 +107,21 @@ function normalizeProps(
   };
 }
 
+export function h<P>(
+  type: (props: P) => VNode,
+  props: P & { key?: Key | null },
+  ...children: Child[]
+): VNode;
+export function h(
+  type: () => VNode,
+  props?: { key?: Key | null } | null,
+  ...children: Child[]
+): VNode;
+export function h(
+  type: string,
+  props?: Props | null,
+  ...children: Child[]
+): VNode;
 export function h(
   type: string | Component,
   props?: Props | null,
