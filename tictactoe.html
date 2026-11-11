@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>틱택토</title>
+    <style>
+      :root {
+        --fg: #1f2328;
+        --muted: #656d76;
+        --line: #d0d7de;
+        --soft: #f6f8fa;
+        --accent: #0969da;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 1000px;
+        padding: 24px 16px;
+        font-family: system-ui, sans-serif;
+        color: var(--fg);
+        background: #fff;
+      }
+      h1 {
+        margin: 0 0 20px;
+        font-size: 1.5rem;
+      }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+        gap: 32px;
+        align-items: start;
+      }
+      @media (max-width: 760px) {
+        .layout {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      /* 게임 */
+      .status {
+        margin: 0 0 12px;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+      .board {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 24px;
+      }
+      .square {
+        aspect-ratio: 1;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: inherit;
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .square:not([aria-disabled="true"]):hover {
+        background: #eaeef2;
+      }
+      .square[aria-disabled="true"] {
+        cursor: default;
+      }
+      .square.win {
+        background: #dafbe1;
+        border-color: #1a7f37;
+      }
+
+      /* 수 기록 */
+      .moves {
+        display: grid;
+        gap: 4px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .move {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 6px 10px;
+        font: inherit;
+        font-size: 0.875rem;
+        text-align: left;
+        color: inherit;
+        background: none;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .move:hover {
+        background: var(--soft);
+      }
+      .move.current {
+        background: #ddf4ff;
+        border-color: #54aeff;
+        font-weight: 600;
+      }
+      .move-no {
+        min-width: 1.5em;
+        font:
+          12px ui-monospace,
+          monospace;
+        color: var(--muted);
+        text-align: right;
+      }
+
+      /* Patch 로그 */
+      .log-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+      }
+      #clear {
+        padding: 2px 8px;
+        font: inherit;
+        font-size: 0.75rem;
+        color: var(--muted);
+        background: none;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      #log {
+        display: grid;
+        gap: 10px;
+        /* 제목과 로그 머리 높이를 빼고 화면 아래 끝까지 */
+        max-height: calc(100vh - 140px);
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+        list-style: none;
+      }
+      .empty {
+        padding: 16px;
+        color: var(--muted);
+        font-size: 0.875rem;
+        background: var(--soft);
+        border-radius: 8px;
+      }
+      .render {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .render-head {
+        display: flex;
+        gap: 8px;
+        padding: 6px 12px;
+        font-size: 0.8125rem;
+        background: var(--soft);
+        border-bottom: 1px solid var(--line);
+      }
+      .render-head b {
+        color: var(--accent);
+      }
+      .render-head span {
+        color: var(--muted);
+      }
+      .patch {
+        display: grid;
+        grid-template-columns: 4.5em 5.5em minmax(0, 1fr);
+        gap: 8px;
+        align-items: baseline;
+        padding: 5px 12px;
+        font:
+          12px/1.5 ui-monospace,
+          monospace;
+      }
+      .patch + .patch {
+        border-top: 1px solid #eaeef2;
+      }
+      .badge {
+        padding: 1px 0;
+        font-size: 11px;
+        font-weight: 700;
+        text-align: center;
+        border-radius: 4px;
+      }
+      .CREATE {
+        color: #116329;
+        background: #dafbe1;
+      }
+      .REMOVE {
+        color: #a40e26;
+        background: #ffebe9;
+      }
+      .REPLACE {
+        color: #953800;
+        background: #fff1e5;
+      }
+      .TEXT {
+        color: #0550ae;
+        background: #ddf4ff;
+      }
+      .PROPS {
+        color: #6639ba;
+        background: #fbefff;
+      }
+      .MOVE {
+        color: #7d4e00;
+        background: #fff8c5;
+      }
+      .path {
+        color: var(--muted);
+      }
+      .detail {
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>틱택토</h1>
+    <div class="layout">
+      <section aria-label="게임">
+        <div id="app"></div>
+      </section>
+      <section aria-label="Patch 로그">
+        <div class="log-head">
+          <h2>Patch 로그</h2>
+          <button id="clear" type="button">지우기</button>
+        </div>
+        <ol id="log"></ol>
+      </section>
+    </div>
+    <script type="module">
+      import { startTicTacToe } from "./dist/tictactoe-page.js";
+      startTicTacToe(document);
+    </script>
+  </body>
+</html>
