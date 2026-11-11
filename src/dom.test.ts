@@ -574,9 +574,10 @@ describe("HTML 직렬화", () => {
           name: undefined,
           onClick: () => {},
           style: { color: "red" },
+          data: { value: "생략" },
         }),
       ),
-      '<input checked disabled value="0" title>',
+      '<input checked disabled value="0" title style="color: red">',
     );
   });
 

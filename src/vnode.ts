@@ -90,6 +90,18 @@ function normalizeChildren(raw: Child[]): {
   };
 }
 
+function styleText(style: Record<string, string>): string {
+  return Object.entries(style)
+    .filter(([, value]) => value !== "")
+    .map(([name, value]) => {
+      const cssName = name.startsWith("--")
+        ? name
+        : name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      return `${cssName}: ${value}`;
+    })
+    .join("; ");
+}
+
 function normalizeProps(
   props: Props | null,
   isElement: boolean,
@@ -100,6 +112,14 @@ function normalizeProps(
   if (isElement && !("class" in normalized) && "className" in normalized) {
     normalized.class = normalized.className;
     delete normalized.className;
+  }
+  if (
+    isElement &&
+    normalized.style !== null &&
+    typeof normalized.style === "object"
+  ) {
+    normalized.style = styleText(normalized.style);
+    if (normalized.style === "") delete normalized.style;
   }
   return {
     props: Object.keys(normalized).length === 0 ? null : normalized,

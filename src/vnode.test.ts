@@ -222,16 +222,65 @@ describe("h: props 정규화", () => {
     });
     assert.deepStrictEqual(node.props, {
       class: "x",
-      style,
+      style: "color: red",
       onClick: listener,
       checked: false,
       value: 0,
       title: null,
       id: undefined,
     });
-    assert.strictEqual(node.props?.style, style);
+    assert.equal(node.props?.style, "color: red");
     assert.strictEqual(node.props?.onClick, listener);
     assert.notStrictEqual(node.props, props);
+  });
+});
+
+describe("h: style 변환", () => {
+  const cases: [Record<string, string>, string][] = [
+    [{ color: "red", fontSize: "12px" }, "color: red; font-size: 12px"],
+    [
+      { "--gap": "4px", gridTemplateColumns: "repeat(9, 2rem)" },
+      "--gap: 4px; grid-template-columns: repeat(9, 2rem)",
+    ],
+    [{ WebkitTransition: "all 1s" }, "-webkit-transition: all 1s"],
+    [{ "--MyGap": "4px" }, "--MyGap: 4px"],
+    [{ color: "", fontSize: "12px" }, "font-size: 12px"],
+    [{ color: "not-a-color" }, "color: not-a-color"],
+  ];
+  for (const [style, expected] of cases) {
+    it(`${JSON.stringify(style)}를 ${expected}로 바꾼다`, () => {
+      assert.deepStrictEqual(h("p", { style }).props, { style: expected });
+    });
+  }
+
+  const emptyStyles: Record<string, string>[] = [{}, { color: "" }];
+  for (const style of emptyStyles) {
+    it(`${JSON.stringify(style)}는 style 키를 지운다`, () => {
+      assert.equal(h("p", { style }).props, null);
+      assert.deepStrictEqual(h("p", { style, id: "item" }).props, {
+        id: "item",
+      });
+    });
+  }
+
+  it("문자열과 객체가 아닌 style 값은 그대로 둔다", () => {
+    for (const style of ["color: red", "", null, undefined, false]) {
+      assert.deepStrictEqual(h("p", { style }).props, { style });
+    }
+  });
+
+  it("컴포넌트의 style은 빈 객체도 같은 참조로 유지한다", () => {
+    const Item = (props: { style: Record<string, string> }) => h("p", props);
+    const styles: Record<string, string>[] = [
+      { color: "red" },
+      {},
+      { color: "" },
+    ];
+    for (const style of styles) {
+      Object.freeze(style);
+      const props = Object.freeze({ style });
+      assert.strictEqual(h(Item, props).props?.style, style);
+    }
   });
 });
 

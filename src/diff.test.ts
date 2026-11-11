@@ -177,17 +177,33 @@ describe("diff: 속성 비교 (diffProps)", () => {
     ]);
   });
 
-  test("!==로 비교해요: 내용이 같아도 다른 style 객체면 set", () => {
+  test("내용이 같은 style 객체는 같은 문자열이 돼요", () => {
     const style = { color: "red" };
     assert.deepEqual(propsPatch({ style }, { style }), []);
-    assert.deepEqual(propsPatch({ style }, { style: { color: "red" } }), [
-      {
-        type: "PROPS",
-        path: [0],
-        set: { style: { color: "red" } },
-        remove: [],
-      },
-    ]);
+    assert.deepEqual(propsPatch({ style }, { style: { color: "red" } }), []);
+  });
+
+  test("style 내용이 바뀌면 문자열로 set해요", () => {
+    assert.deepEqual(
+      propsPatch({ style: { color: "red" } }, { style: { color: "blue" } }),
+      [
+        {
+          type: "PROPS",
+          path: [0],
+          set: { style: "color: blue" },
+          remove: [],
+        },
+      ],
+    );
+  });
+
+  test("style 객체가 비면 style 속성을 제거해요", () => {
+    const styles: Record<string, string>[] = [{}, { color: "" }];
+    for (const style of styles) {
+      assert.deepEqual(propsPatch({ style: { color: "red" } }, { style }), [
+        { type: "PROPS", path: [0], set: {}, remove: ["style"] },
+      ]);
+    }
   });
 
   test("값이 undefined여도 새 props에 이름이 있으면 remove가 아니에요", () => {
