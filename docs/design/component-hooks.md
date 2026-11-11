@@ -82,9 +82,9 @@ expand(h("ul", null, h(Item, { key: "a", label: "x" })));
 
 | 메서드 | 하는 일 |
 |---|---|
-| `renderTree(): VNode` | `hookIndex = 0`으로 두고 `FunctionComponent.current`를 자신으로 둔 채 루트 함수를 `type({ ...props })`로 실행해 `expand(결과, memo, 새 Map)`로 펼쳐요. `props`가 `null`이어도 루트 함수는 빈 객체를 받아요(2026-11-11 담당자 결정). 새 `Map`을 `memo`에 넣어요. `finally`로 `current`를 이전 값으로 되돌려요 |
+| `renderTree(): VNode` | `hookIndex = 0`으로 두고 `FunctionComponent.current`를 자신으로 둔 채 루트 함수를 실행해 `expand(결과, memo, 새 Map)`로 펼쳐요. 새 `Map`을 `memo`에 넣어요. `finally`로 `current`를 이전 값으로 되돌려요 |
 | `mount(): void` | 첫 렌더. `renderTree` → `listen(container)` → `mountArea` → `tree` 저장 → `runEffects` |
-| `update(): Patch[]` | 다시 그리기. `renderTree` → `diff(tree, 새 트리)` → `applyPatches` → `tree` 교체 → `runEffects`. 적용한 Patch를 돌려줘요. `tree`가 `null`이면(`mount` 전) "mount를 먼저 불러야 해요" 오류를 던져요(2026-11-11 담당자 결정) |
+| `update(): Patch[]` | 다시 그리기. `renderTree` → `diff(tree, 새 트리)` → `applyPatches` → `tree` 교체 → `runEffects`. 적용한 Patch를 돌려줘요 |
 | `runEffects(): void` | `flushing`이 `true`면 바로 돌아가요. 아니면 `flushing`을 `true`로 두고 `effects`가 빌 때까지 맨 앞 작업을 꺼내 실행한 뒤, `finally`로 `flushing`을 `false`로 되돌려요 |
 
 effect 안의 `setState`가 다시 렌더하면 그 렌더의 `update()`도 `runEffects`를 부르지만 `flushing`이라 바로 돌아가요. 그 렌더의 작업은 `effects` 뒤에 붙어 있다가, 지금 effect가 끝난 뒤 바깥 루프가 이어서 실행해요. 그래서 한 effect의 `create`가 끝나기 전에 다른 effect가 끼어들지 않아요. 끼어들면 안쪽 effect가 저장한 cleanup을 바깥 `create`의 반환값이 덮어써요. 여전히 같은 흐름 안에서 동기로 실행해요(7-1 A).
@@ -156,8 +156,6 @@ setter는 첫 렌더에 한 번 만들어 칸에 넣고, 다음 렌더부터는 
 | 캐시: 바깥만 다시 쓴 뒤 안쪽 1개 변경 | 목록을 감싼 컴포넌트를 한 번 다시 쓰고(props 같음), 다음 렌더에 항목 하나만 바꾸면 항목 함수 호출 1번 |
 | 캐시: `key`만 바뀜 | `A`가 `h(B, { key: p.id, label: "x" })`를 돌려줄 때 `id`만 바꾸면 `B` 호출 1번, 결과 key가 새 `id`. `Infinity` → `-Infinity`처럼 자리 이름이 같은 key로 바꿔도 1번 |
 | `mount` | 영역의 자식이 루트 하나, `tree`가 `null`이 아님 |
-| 루트 props | `createRoot(el, App, { title: "x" })`면 `{ title: "x" }`, `createRoot(el, App)`이면 `{}`를 받음 |
-| `mount` 전 `update` | "mount를 먼저 불러야 해요" 오류 |
 | `renderTree` 예외 | 루트 함수가 던진 뒤 `FunctionComponent.current`가 `null` |
 | 변경분만 반영 | 상태 하나를 바꾸면 `update()`가 해당 Patch만 돌려주고, 나머지 노드가 같은 객체(`===`) |
 | `useState` 즉시 렌더 | `set(1)` 다음 줄에서 DOM이 `"1"` |
