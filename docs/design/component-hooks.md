@@ -47,7 +47,7 @@ expand(h("ul", null, h(Item, { key: "a", label: "x" })));
 자식 컴포넌트는 props만 받는 순수 함수라서, 지난 렌더와 입력이 같으면 결과도 같아요. 그래서 `prev`와 `next`를 받으면 지난 결과를 다시 써요. 다시 쓴 결과는 지난 트리에 있던 **같은 객체**라서, `diff`가 `o === n`에서 바로 끝나 그 아래를 비교하지 않아요.
 
 - **자리 이름(`slot`):** 루트 결과는 `""`예요. 요소의 `i`번째 자식은 `부모 slot + "/" + i`, key가 있으면 `부모 slot + "/k" + JSON.stringify(key)`예요(`/k"a"`, `/k1`). 컴포넌트의 결과는 `컴포넌트 slot + ">"`예요. key로 이름을 지으면 목록 순서가 바뀌어도 같은 이름이에요. `JSON.stringify`로 감싸서 key `1`과 `"1"`, `/`나 `>`가 든 key도 다른 이름이 돼요.
-- **다시 쓰는 조건:** `prev.get(slot)`이 있고 `type`이 같고, `children`이 `Object.is`로 같고, props가 같을 때예요. props가 같다는 것은 둘 다 `null`이거나, 둘 다 객체이고 키 수가 같고 `a`의 모든 키가 `b`에도 있으며 값이 `Object.is`로 같다는 뜻이에요. 그래서 `{ a: undefined }`와 `{ b: undefined }`는 달라요. `null`과 `{}`도 달라요.
+- **다시 쓰는 조건:** `prev.get(slot)`이 있고 `type`이 같고, `children`이 `Object.is`로 같고, props가 같을 때예요. props가 같다는 것은 지난 props와 이번 props가 둘 다 `null`이거나, 둘 다 객체이고 키 수가 같고 지난 props의 모든 키가 이번 props에도 있으며 값이 `Object.is`로 같다는 뜻이에요. 그래서 `{ a: undefined }`와 `{ b: undefined }`는 달라요. `null`과 `{}`도 달라요.
 - 다시 쓰면 그 `Memo`를 `next`에 그대로 넣고, `prev`에서 이름이 `slot + ">"`로 시작하는 항목(그 컴포넌트 안쪽의 자리)도 모두 `next`에 옮긴 뒤 `result`를 돌려줘요. 옮기지 않으면 다음 렌더에 바깥 컴포넌트가 다시 실행될 때 안쪽 컴포넌트가 모두 다시 실행돼요. 아니면 컴포넌트를 실행해 펼친 결과를 `{ type, props, children, result }`로 `next`에 넣어요. `result`에는 물려받은 `key`가 들어가 있어요.
 - `FunctionComponent`가 렌더마다 새 `Map`을 `next`로 넘기고, 끝나면 그것을 다음 렌더의 `prev`로 써요. 이번 렌더에 없던 자리는 사라져요.
 - 루트 컴포넌트는 캐시하지 않아요. `renderTree`가 루트 함수를 직접 실행해요.
